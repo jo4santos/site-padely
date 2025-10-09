@@ -1,19 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link as RouterLink } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
     Container,
     Typography,
     Box,
     Stack,
-    CircularProgress,
-    Button,
-    IconButton
+    CircularProgress
 } from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { getTournaments, getEventMatches } from '../api/api.service';
 import { MatchList } from '../components/MatchCard';
 import Filter from '../components/Filter';
 import Tabs from '../components/Tabs';
+import { useAutoRefresh } from '../contexts/AutoRefreshContext';
 
 /**
  * Tournament Detail Page using MUI
@@ -81,7 +79,7 @@ export default function TournamentDetailPage() {
     const [currentGender, setCurrentGender] = useState('all');
     const [allMatches, setAllMatches] = useState([]);
     const [matchesLoading, setMatchesLoading] = useState(false);
-    const [autoRefresh, setAutoRefresh] = useState(true);
+    const { autoRefresh } = useAutoRefresh();
     const intervalRef = useRef(null);
 
     // Load tournament info
@@ -207,15 +205,6 @@ export default function TournamentDetailPage() {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Button
-                component={RouterLink}
-                to="/"
-                startIcon={<ArrowBackIcon />}
-                sx={{ mb: 2 }}
-            >
-                Back to Tournaments
-            </Button>
-
             <Typography variant="h3" component="h2" gutterBottom fontWeight="bold">
                 {tournament.name}
             </Typography>
@@ -229,24 +218,6 @@ export default function TournamentDetailPage() {
                     activeFilter={currentGender}
                     onChange={setCurrentGender}
                 />
-                <IconButton
-                    onClick={() => setAutoRefresh(!autoRefresh)}
-                    color={autoRefresh ? 'success' : 'default'}
-                    sx={{ ml: 'auto' }}
-                >
-                    <RefreshIcon
-                        sx={{
-                            animation: autoRefresh ? 'spin 2s linear infinite' : 'none',
-                            '@keyframes spin': {
-                                '0%': { transform: 'rotate(0deg)' },
-                                '100%': { transform: 'rotate(360deg)' }
-                            }
-                        }}
-                    />
-                </IconButton>
-                <Typography variant="body2" color={autoRefresh ? 'success.main' : 'text.secondary'}>
-                    Auto-Refresh: {autoRefresh ? 'ON' : 'OFF'}
-                </Typography>
             </Stack>
 
             <Tabs

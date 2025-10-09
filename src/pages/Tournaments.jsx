@@ -142,23 +142,78 @@ export default function TournamentsPage() {
     ];
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Typography variant="h3" component="h2" gutterBottom fontWeight="bold">
-                Padel Tournaments
-            </Typography>
+        <Container maxWidth="lg" sx={{ py: 5 }}>
+            <Box sx={{ mb: 5 }}>
+                <Typography
+                    variant="h3"
+                    component="h1"
+                    sx={{
+                        fontWeight: 800,
+                        color: '#1A1A2E',
+                        mb: 1,
+                        letterSpacing: '-0.02em',
+                    }}
+                >
+                    Padel Tournaments
+                </Typography>
+                <Typography
+                    variant="body1"
+                    sx={{
+                        color: '#64748B',
+                        fontSize: '1.1rem',
+                    }}
+                >
+                    Discover and follow professional padel tournaments worldwide
+                </Typography>
+            </Box>
 
             {/* Search and Filters */}
-            <Box sx={{ mb: 4 }}>
+            <Box
+                sx={{
+                    mb: 5,
+                    p: 3,
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 3,
+                    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                }}
+            >
                 <TextField
                     fullWidth
-                    placeholder="Search tournaments..."
+                    placeholder="Search tournaments by name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    sx={{ mb: 2 }}
+                    sx={{
+                        mb: 3,
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            backgroundColor: '#F8FAFC',
+                            '& fieldset': {
+                                borderColor: '#E2E8F0',
+                                borderWidth: 2,
+                            },
+                            '&:hover fieldset': {
+                                borderColor: '#CBD5E1',
+                            },
+                            '&.Mui-focused fieldset': {
+                                borderColor: '#0066CC',
+                            },
+                        },
+                    }}
                 />
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
-                    <Typography variant="body1" fontWeight={600}>
-                        Filter by type:
+                <Box>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            fontWeight: 600,
+                            color: '#64748B',
+                            mb: 1.5,
+                            textTransform: 'uppercase',
+                            fontSize: '0.75rem',
+                            letterSpacing: '0.05em',
+                        }}
+                    >
+                        Filter by Type
                     </Typography>
                     <Filter
                         filters={typeFilters}
@@ -166,7 +221,7 @@ export default function TournamentsPage() {
                         onChange={setTypeFilter}
                         multiSelect={true}
                     />
-                </Stack>
+                </Box>
             </Box>
 
             {/* Favorites Section */}

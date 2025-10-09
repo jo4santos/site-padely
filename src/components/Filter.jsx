@@ -41,7 +41,36 @@ export default function Filter({ filters, activeFilter, onChange, multiSelect = 
             exclusive={!multiSelect}
             onChange={handleChange}
             size="small"
-            sx={{ flexWrap: 'wrap', gap: 0.5 }}
+            sx={{
+                flexWrap: 'wrap',
+                gap: 1,
+                '& .MuiToggleButton-root': {
+                    border: '2px solid #E2E8F0',
+                    borderRadius: '10px',
+                    px: 2.5,
+                    py: 0.8,
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textTransform: 'none',
+                    color: '#64748B',
+                    backgroundColor: '#FFFFFF',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                        backgroundColor: '#F8FAFC',
+                        borderColor: '#CBD5E1',
+                        transform: 'translateY(-1px)',
+                    },
+                    '&.Mui-selected': {
+                        backgroundColor: '#0066CC',
+                        color: '#FFFFFF',
+                        borderColor: '#0066CC',
+                        '&:hover': {
+                            backgroundColor: '#005BB5',
+                            borderColor: '#005BB5',
+                        },
+                    },
+                },
+            }}
         >
             {filters.map(filter => (
                 <ToggleButton key={filter.value} value={filter.value}>

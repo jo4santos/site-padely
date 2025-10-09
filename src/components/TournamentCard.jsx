@@ -44,12 +44,9 @@ export default function TournamentCard({ tournament }) {
                     flexDirection: { xs: 'column', sm: 'row' },
                     height: { xs: 'auto', sm: 160 },
                     width: '100%',
-                    transition: 'box-shadow 0.3s',
                     position: 'relative',
                     overflow: 'hidden',
-                    '&:hover': {
-                        boxShadow: 6
-                    }
+                    backgroundColor: 'background.paper',
                 }}
             >
                 <Box
