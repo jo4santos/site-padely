@@ -61,10 +61,13 @@ const theme = createTheme({
 });
 
 function App() {
+    // Get base URL from Vite config (works for both dev and production)
+    const basename = import.meta.env.BASE_URL;
+
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <BrowserRouter>
+            <BrowserRouter basename={basename}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
                     <AppBar position="static">
                         <Toolbar>
