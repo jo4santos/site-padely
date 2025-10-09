@@ -8,7 +8,8 @@ import {
     Card,
     CardContent,
     Avatar,
-    CircularProgress
+    CircularProgress,
+    TextField
 } from '@mui/material';
 import { getRankings } from '../api/api.service';
 import Filter from '../components/Filter';
@@ -66,6 +67,7 @@ export default function RankingsPage() {
     const [rankings, setRankings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         async function loadRankings() {
@@ -94,6 +96,12 @@ export default function RankingsPage() {
         { label: 'Women', value: 'women' }
     ];
 
+    // Filter rankings by search query
+    const filteredRankings = rankings.filter(player =>
+        player.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        player.country.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
             <Typography variant="h3" component="h2" gutterBottom fontWeight="bold">
@@ -101,6 +109,13 @@ export default function RankingsPage() {
             </Typography>
 
             <Box sx={{ mb: 3 }}>
+                <TextField
+                    fullWidth
+                    placeholder="Search by player name or country..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ mb: 2 }}
+                />
                 <Filter
                     filters={genderFilters}
                     activeFilter={gender}
@@ -116,16 +131,18 @@ export default function RankingsPage() {
 
             {error && <Typography color="error">{error}</Typography>}
 
-            {!loading && !error && rankings.length > 0 && (
+            {!loading && !error && filteredRankings.length > 0 && (
                 <Box>
-                    {rankings.map(player => (
+                    {filteredRankings.map(player => (
                         <RankingCard key={player.position} player={player} />
                     ))}
                 </Box>
             )}
 
-            {!loading && !error && rankings.length === 0 && (
-                <Typography>No rankings available.</Typography>
+            {!loading && !error && filteredRankings.length === 0 && (
+                <Typography>
+                    {searchQuery ? 'No players found matching your search.' : 'No rankings available.'}
+                </Typography>
             )}
         </Container>
     );

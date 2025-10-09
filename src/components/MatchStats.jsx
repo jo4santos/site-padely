@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Box, Typography, LinearProgress, Stack, Tabs, Tab } from '@mui/material';
+import { Box, Typography, LinearProgress, Stack, Tabs, Tab, Chip } from '@mui/material';
+import { TrendingUp, TrendingDown, TrendingFlat } from '@mui/icons-material';
 
 /**
  * Match Statistics Component using MUI
+ * Shows trends between consecutive sets
  */
 
 function parseStatValue(value) {
@@ -12,16 +14,37 @@ function parseStatValue(value) {
     return parseInt(value) || 0;
 }
 
-function StatRow({ label, team1, team2 }) {
+function calculateTrend(currentValue, previousValue) {
+    const current = parseStatValue(currentValue);
+    const previous = parseStatValue(previousValue);
+    const diff = current - previous;
+
+    if (diff > 0) return { direction: 'up', diff, icon: TrendingUp, color: 'success' };
+    if (diff < 0) return { direction: 'down', diff, icon: TrendingDown, color: 'error' };
+    return { direction: 'flat', diff: 0, icon: TrendingFlat, color: 'default' };
+}
+
+function StatRow({ label, team1, team2, team1Trend, team2Trend }) {
     const value1 = parseStatValue(team1);
     const value2 = parseStatValue(team2);
 
     return (
         <Box sx={{ mb: 2 }}>
             <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
-                <Typography variant="body2" sx={{ minWidth: 80, textAlign: 'right', fontWeight: 'bold', color: 'primary.main' }}>
-                    {team1}
-                </Typography>
+                <Box sx={{ minWidth: 80, textAlign: 'right' }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                        {team1}
+                    </Typography>
+                    {team1Trend && (
+                        <Chip
+                            icon={<team1Trend.icon />}
+                            label={team1Trend.diff > 0 ? `+${team1Trend.diff}` : team1Trend.diff}
+                            size="small"
+                            color={team1Trend.color}
+                            sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }}
+                        />
+                    )}
+                </Box>
                 <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
                         <LinearProgress
@@ -57,9 +80,20 @@ function StatRow({ label, team1, team2 }) {
                         />
                     </Box>
                 </Box>
-                <Typography variant="body2" sx={{ minWidth: 80, fontWeight: 'bold', color: 'success.main' }}>
-                    {team2}
-                </Typography>
+                <Box sx={{ minWidth: 80 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                        {team2}
+                    </Typography>
+                    {team2Trend && (
+                        <Chip
+                            icon={<team2Trend.icon />}
+                            label={team2Trend.diff > 0 ? `+${team2Trend.diff}` : team2Trend.diff}
+                            size="small"
+                            color={team2Trend.color}
+                            sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }}
+                        />
+                    )}
+                </Box>
             </Stack>
         </Box>
     );
@@ -72,13 +106,36 @@ function StatsSection({ title, stats }) {
                 {title}
             </Typography>
             {stats.map((stat, i) => (
-                <StatRow key={i} label={stat.label} team1={stat.team1} team2={stat.team2} />
+                <StatRow
+                    key={i}
+                    label={stat.label}
+                    team1={stat.team1}
+                    team2={stat.team2}
+                    team1Trend={stat.team1Trend}
+                    team2Trend={stat.team2Trend}
+                />
             ))}
         </Box>
     );
 }
 
-function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name }) {
+function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name, previousTeam1Stats, previousTeam2Stats }) {
+    // Helper to build stat object with trend
+    const buildStat = (label, team1Path, team2Path) => {
+        const team1Value = team1Path(team1Stats);
+        const team2Value = team2Path(team2Stats);
+
+        const stat = { label, team1: team1Value, team2: team2Value };
+
+        // Add trends if previous stats exist
+        if (previousTeam1Stats && previousTeam2Stats) {
+            stat.team1Trend = calculateTrend(team1Value, team1Path(previousTeam1Stats));
+            stat.team2Trend = calculateTrend(team2Value, team2Path(previousTeam2Stats));
+        }
+
+        return stat;
+    };
+
     return (
         <Box sx={{ p: 2 }}>
             <Stack direction="row" justifyContent="space-around" sx={{ mb: 3 }}>
@@ -90,38 +147,50 @@ function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name }) {
                 </Typography>
             </Stack>
 
+            {previousTeam1Stats && (
+                <Box sx={{ mb: 2, textAlign: 'center' }}>
+                    <Chip
+                        icon={<TrendingUp />}
+                        label="Showing trends vs previous set"
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                    />
+                </Box>
+            )}
+
             <StatsSection
                 title="Match Stats"
                 stats={[
-                    { label: 'Total Points Won', team1: team1Stats.match.totalPointsWon, team2: team2Stats.match.totalPointsWon },
-                    { label: 'Breaking Points Converted', team1: team1Stats.match.breakingPointsConverted, team2: team2Stats.match.breakingPointsConverted },
-                    { label: 'Longest Streak', team1: team1Stats.match.longestStreak, team2: team2Stats.match.longestStreak }
+                    buildStat('Total Points Won', s => s.match.totalPointsWon, s => s.match.totalPointsWon),
+                    buildStat('Breaking Points Converted', s => s.match.breakingPointsConverted, s => s.match.breakingPointsConverted),
+                    buildStat('Longest Streak', s => s.match.longestStreak, s => s.match.longestStreak)
                 ]}
             />
 
             <StatsSection
                 title="Serve Stats"
                 stats={[
-                    { label: 'Aces', team1: team1Stats.serve.aces, team2: team2Stats.serve.aces },
-                    { label: 'Double Faults', team1: team1Stats.serve.doubleFaults, team2: team2Stats.serve.doubleFaults },
-                    { label: 'Won on First Serve', team1: team1Stats.serve.wonOnFirstServe, team2: team2Stats.serve.wonOnFirstServe },
-                    { label: 'Won on Second Serve', team1: team1Stats.serve.wonOnSecondServe, team2: team2Stats.serve.wonOnSecondServe }
+                    buildStat('Aces', s => s.serve.aces, s => s.serve.aces),
+                    buildStat('Double Faults', s => s.serve.doubleFaults, s => s.serve.doubleFaults),
+                    buildStat('Won on First Serve', s => s.serve.wonOnFirstServe, s => s.serve.wonOnFirstServe),
+                    buildStat('Won on Second Serve', s => s.serve.wonOnSecondServe, s => s.serve.wonOnSecondServe)
                 ]}
             />
 
             <StatsSection
                 title="Return Stats"
                 stats={[
-                    { label: 'Won on First Return', team1: team1Stats.returnStats.wonOnFirstReturn, team2: team2Stats.returnStats.wonOnFirstReturn },
-                    { label: 'Won on Second Return', team1: team1Stats.returnStats.wonOnSecondReturn, team2: team2Stats.returnStats.wonOnSecondReturn }
+                    buildStat('Won on First Return', s => s.returnStats.wonOnFirstReturn, s => s.returnStats.wonOnFirstReturn),
+                    buildStat('Won on Second Return', s => s.returnStats.wonOnSecondReturn, s => s.returnStats.wonOnSecondReturn)
                 ]}
             />
 
             <StatsSection
                 title="Total Points"
                 stats={[
-                    { label: 'Total Won on Serve', team1: team1Stats.totalPoints.totalWonOnServe, team2: team2Stats.totalPoints.totalWonOnServe },
-                    { label: 'Total Won on Return', team1: team1Stats.totalPoints.totalWonOnReturn, team2: team2Stats.totalPoints.totalWonOnReturn }
+                    buildStat('Total Won on Serve', s => s.totalPoints.totalWonOnServe, s => s.totalPoints.totalWonOnServe),
+                    buildStat('Total Won on Return', s => s.totalPoints.totalWonOnReturn, s => s.totalPoints.totalWonOnReturn)
                 ]}
             />
         </Box>
@@ -136,13 +205,15 @@ export default function MatchStats({ stats, team1Name = 'Team 1', team2Name = 'T
     }
 
     const tabs = [
-        { label: 'Overall Match', data: stats.match },
-        stats.set1 && { label: 'Set 1', data: stats.set1 },
-        stats.set2 && { label: 'Set 2', data: stats.set2 },
-        stats.set3 && { label: 'Set 3', data: stats.set3 }
+        { label: 'Overall Match', data: stats.match, previousData: null },
+        stats.set1 && { label: 'Set 1', data: stats.set1, previousData: null },
+        stats.set2 && { label: 'Set 2', data: stats.set2, previousData: stats.set1 },
+        stats.set3 && { label: 'Set 3', data: stats.set3, previousData: stats.set2 }
     ].filter(Boolean);
 
-    const currentStats = tabs[activeTab].data;
+    const currentTab = tabs[activeTab];
+    const currentStats = currentTab.data;
+    const previousStats = currentTab.previousData;
 
     return (
         <Box>
@@ -159,6 +230,8 @@ export default function MatchStats({ stats, team1Name = 'Team 1', team2Name = 'T
                 team2Stats={currentStats.team2Stats}
                 team1Name={team1Name}
                 team2Name={team2Name}
+                previousTeam1Stats={previousStats?.team1Stats}
+                previousTeam2Stats={previousStats?.team2Stats}
             />
         </Box>
     );

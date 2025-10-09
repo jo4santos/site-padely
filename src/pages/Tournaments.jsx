@@ -8,9 +8,10 @@ import {
     CircularProgress,
     Chip
 } from '@mui/material';
-import { FiberManualRecord as LiveIcon } from '@mui/icons-material';
+import { FiberManualRecord as LiveIcon, Star } from '@mui/icons-material';
 import { getTournaments } from '../api/api.service';
 import { TournamentGrid } from '../components/TournamentCard';
+import { useFavorites } from '../hooks/useFavorites';
 import Filter from '../components/Filter';
 
 /**
@@ -73,8 +74,9 @@ export default function TournamentsPage() {
     const [tournaments, setTournaments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [typeFilter, setTypeFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState(['all']);
     const [searchQuery, setSearchQuery] = useState('');
+    const { favorites } = useFavorites();
 
     useEffect(() => {
         async function loadTournaments() {
@@ -118,8 +120,8 @@ export default function TournamentsPage() {
     // Apply filters
     let filtered = tournaments;
 
-    if (typeFilter !== 'all') {
-        filtered = filtered.filter(t => t.type === typeFilter);
+    if (!typeFilter.includes('all')) {
+        filtered = filtered.filter(t => typeFilter.includes(t.type));
     }
 
     if (searchQuery) {
@@ -162,9 +164,23 @@ export default function TournamentsPage() {
                         filters={typeFilters}
                         activeFilter={typeFilter}
                         onChange={setTypeFilter}
+                        multiSelect={true}
                     />
                 </Stack>
             </Box>
+
+            {/* Favorites Section */}
+            {favorites.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                        <Star sx={{ color: 'warning.main' }} />
+                        <Typography variant="h5" component="h3" fontWeight="bold">
+                            Your Favorites
+                        </Typography>
+                    </Stack>
+                    <TournamentGrid tournaments={favorites} />
+                </Box>
+            )}
 
             {/* Live Today Section */}
             {today.length > 0 && (
