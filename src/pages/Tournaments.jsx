@@ -1,0 +1,213 @@
+import { useState, useEffect } from 'react';
+import {
+    Container,
+    Typography,
+    TextField,
+    Box,
+    Stack,
+    CircularProgress,
+    Chip
+} from '@mui/material';
+import { FiberManualRecord as LiveIcon } from '@mui/icons-material';
+import { getTournaments } from '../api/api.service';
+import { TournamentGrid } from '../components/TournamentCard';
+import Filter from '../components/Filter';
+
+/**
+ * Tournaments List Page using MUI
+ */
+
+function parseTournamentDates(tournament) {
+    const [startDay, startMonth, startYear] = tournament.startDate.split('/');
+    const [endDay, endMonth, endYear] = tournament.endDate.split('/');
+
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    return { startDate, endDate };
+}
+
+function categorizeTournaments(tournaments) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayTournaments = [];
+    const upcomingTournaments = [];
+    const pastTournaments = [];
+
+    tournaments.forEach(tournament => {
+        const { startDate, endDate } = parseTournamentDates(tournament);
+
+        if (startDate <= today && endDate >= today) {
+            todayTournaments.push(tournament);
+        } else if (startDate > today) {
+            upcomingTournaments.push(tournament);
+        } else {
+            pastTournaments.push(tournament);
+        }
+    });
+
+    return {
+        today: todayTournaments,
+        upcoming: upcomingTournaments,
+        past: pastTournaments
+    };
+}
+
+function getUniqueTournamentTypes(tournaments) {
+    const types = new Set();
+    tournaments.forEach(t => types.add(t.type));
+    return Array.from(types).sort();
+}
+
+function formatTypeName(type) {
+    return type.split('-').map(word =>
+        word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+}
+
+export default function TournamentsPage() {
+    const [tournaments, setTournaments] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    useEffect(() => {
+        async function loadTournaments() {
+            try {
+                const allTournaments = await getTournaments();
+
+                // Filter out specific tournament types
+                const excludedTypes = ['world-championships', 'fip-championship'];
+                const filtered = allTournaments.filter(t => !excludedTypes.includes(t.type));
+
+                setTournaments(filtered);
+            } catch (err) {
+                setError('Error loading tournaments. Please try again later.');
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        loadTournaments();
+    }, []);
+
+    if (loading) {
+        return (
+            <Container>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+                    <CircularProgress />
+                </Box>
+            </Container>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container>
+                <Typography color="error">{error}</Typography>
+            </Container>
+        );
+    }
+
+    // Apply filters
+    let filtered = tournaments;
+
+    if (typeFilter !== 'all') {
+        filtered = filtered.filter(t => t.type === typeFilter);
+    }
+
+    if (searchQuery) {
+        filtered = filtered.filter(t =>
+            t.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }
+
+    const { today, upcoming, past } = categorizeTournaments(filtered);
+    const types = getUniqueTournamentTypes(tournaments);
+
+    const typeFilters = [
+        { label: 'All', value: 'all' },
+        ...types.map(type => ({
+            label: formatTypeName(type),
+            value: type
+        }))
+    ];
+
+    return (
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+            <Typography variant="h3" component="h2" gutterBottom fontWeight="bold">
+                Padel Tournaments
+            </Typography>
+
+            {/* Search and Filters */}
+            <Box sx={{ mb: 4 }}>
+                <TextField
+                    fullWidth
+                    placeholder="Search tournaments..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ mb: 2 }}
+                />
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                    <Typography variant="body1" fontWeight={600}>
+                        Filter by type:
+                    </Typography>
+                    <Filter
+                        filters={typeFilters}
+                        activeFilter={typeFilter}
+                        onChange={setTypeFilter}
+                    />
+                </Stack>
+            </Box>
+
+            {/* Live Today Section */}
+            {today.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                        <Chip
+                            icon={<LiveIcon />}
+                            label="LIVE"
+                            color="error"
+                            sx={{ fontWeight: 'bold' }}
+                        />
+                        <Typography variant="h5" component="h3" fontWeight="bold">
+                            Happening Today
+                        </Typography>
+                    </Stack>
+                    <TournamentGrid tournaments={today} />
+                </Box>
+            )}
+
+            {/* Upcoming Tournaments Section */}
+            {upcoming.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h5" component="h3" gutterBottom fontWeight="bold">
+                        Upcoming Tournaments
+                    </Typography>
+                    <TournamentGrid tournaments={upcoming} />
+                </Box>
+            )}
+
+            {/* Past Tournaments Section */}
+            {past.length > 0 && (
+                <Box sx={{ mb: 4, opacity: 0.6 }}>
+                    <Typography variant="h5" component="h3" gutterBottom fontWeight="bold">
+                        Past Tournaments
+                    </Typography>
+                    <TournamentGrid tournaments={past} />
+                </Box>
+            )}
+
+            {/* No results */}
+            {today.length === 0 && upcoming.length === 0 && past.length === 0 && (
+                <Typography>No tournaments found matching your filters.</Typography>
+            )}
+        </Container>
+    );
+}
