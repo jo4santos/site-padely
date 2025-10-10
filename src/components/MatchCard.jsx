@@ -196,9 +196,9 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     return (
         <Card
             sx={{
-                height: '100%',
                 border: ongoing ? 2 : 1,
                 borderColor: ongoing ? 'error.main' : 'divider',
+                alignSelf: 'start',
                 ...(isFirstOngoing && {
                     scrollMarginTop: '20px'
                 })
@@ -222,20 +222,20 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                         </Stack>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Box sx={{ textAlign: 'right' }}>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
                             <Typography variant="body2" color="text.secondary">
                                 {formatLocalTime(match.startDate)}
                             </Typography>
                             {showFollowedBy ? (
                                 <Typography variant="caption" color="warning.main" fontWeight="bold">
-                                    Followed by
+                                    • Followed by
                                 </Typography>
                             ) : isToday && !ongoing && getTimeRemaining(match.startDate) && (
                                 <Typography variant="caption" color="primary.main" fontWeight="bold">
-                                    {getTimeRemaining(match.startDate)}
+                                    • {getTimeRemaining(match.startDate)}
                                 </Typography>
                             )}
-                        </Box>
+                        </Stack>
                         <Box
                             onClick={toggleStats}
                             sx={{
