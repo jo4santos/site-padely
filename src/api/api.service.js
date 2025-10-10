@@ -3,26 +3,60 @@
  * Base URL: http://fredericosilva.net:8081/
  */
 
+
 const BASE_URL = 'http://fredericosilva.net:8081';
+
+// Multiple CORS proxy options with fallback
+const CORS_PROXIES = [
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://cors-anywhere.herokuapp.com/'
+];
+
+let currentProxyIndex = 0;
 
 
 
 /**
- * Generic fetch wrapper with error handling (no proxy, direct fetch)
+ * Generic fetch wrapper with error handling and proxy fallback
  */
 async function fetchData(endpoint) {
     const fullUrl = `${BASE_URL}${endpoint}`;
-    try {
-        const response = await fetch(fullUrl, {
-            signal: AbortSignal.timeout(10000) // 10 second timeout
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+
+    // Try each proxy until one works
+    for (let i = 0; i < CORS_PROXIES.length; i++) {
+        const proxyIndex = (currentProxyIndex + i) % CORS_PROXIES.length;
+        const proxy = CORS_PROXIES[proxyIndex];
+
+        try {
+            const url = `${proxy}${encodeURIComponent(fullUrl)}`;
+            console.log(`Attempting fetch with proxy ${proxyIndex + 1}:`, url);
+
+            const response = await fetch(url, {
+                signal: AbortSignal.timeout(10000) // 10 second timeout
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // If successful, remember this proxy for next time
+            currentProxyIndex = proxyIndex;
+            console.log(`✓ Success with proxy ${proxyIndex + 1}`);
+
+            return data;
+        } catch (error) {
+            console.warn(`✗ Proxy ${proxyIndex + 1} failed:`, error.message);
+
+            // If this was the last proxy, throw the error
+            if (i === CORS_PROXIES.length - 1) {
+                console.error('All CORS proxies failed');
+                throw new Error('Unable to fetch data. All CORS proxies failed.');
+            }
+            // Otherwise, try the next proxy
         }
-        return await response.json();
-    } catch (error) {
-        console.error('Fetch failed:', error.message);
-        throw new Error('Unable to fetch data.');
     }
 }
 
