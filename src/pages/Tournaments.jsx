@@ -6,9 +6,12 @@ import {
     Box,
     Stack,
     CircularProgress,
-    Chip
+    Chip,
+    Divider,
+    Button,
+    Collapse
 } from '@mui/material';
-import { FiberManualRecord as LiveIcon, Star } from '@mui/icons-material';
+import { FiberManualRecord as LiveIcon, Star, FilterList, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { getTournaments } from '../api/api.service';
 import { TournamentGrid } from '../components/TournamentCard';
 import { useFavorites } from '../hooks/useFavorites';
@@ -70,12 +73,52 @@ function formatTypeName(type) {
     ).join(' ');
 }
 
+function getUniqueMonths(tournaments) {
+    const months = new Set();
+    tournaments.forEach(t => {
+        const { startDate } = parseTournamentDates(t);
+        const monthYear = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        months.add(monthYear);
+    });
+    return Array.from(months).sort();
+}
+
+function formatMonthYear(monthYear) {
+    const [year, month] = monthYear.split('-');
+    const date = new Date(year, parseInt(month) - 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function groupTournamentsByMonth(tournaments) {
+    const grouped = {};
+    tournaments.forEach(tournament => {
+        const { startDate } = parseTournamentDates(tournament);
+        const monthYear = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        if (!grouped[monthYear]) {
+            grouped[monthYear] = [];
+        }
+        grouped[monthYear].push(tournament);
+    });
+    return grouped;
+}
+
 export default function TournamentsPage() {
     const [tournaments, setTournaments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [typeFilter, setTypeFilter] = useState(['all']);
+    const [typeFilter, setTypeFilter] = useState(() => {
+        const saved = localStorage.getItem('tournament-type-filter');
+        return saved ? JSON.parse(saved) : ['all'];
+    });
+    const [monthFilter, setMonthFilter] = useState(() => {
+        const saved = localStorage.getItem('tournament-month-filter');
+        return saved ? saved : 'all';
+    });
     const [searchQuery, setSearchQuery] = useState('');
+    const [showFilters, setShowFilters] = useState(() => {
+        const saved = localStorage.getItem('tournament-show-filters');
+        return saved ? JSON.parse(saved) : false;
+    });
     const { favorites } = useFavorites();
 
     useEffect(() => {
@@ -98,6 +141,19 @@ export default function TournamentsPage() {
 
         loadTournaments();
     }, []);
+
+    // Save filters to localStorage
+    useEffect(() => {
+        localStorage.setItem('tournament-type-filter', JSON.stringify(typeFilter));
+    }, [typeFilter]);
+
+    useEffect(() => {
+        localStorage.setItem('tournament-month-filter', monthFilter);
+    }, [monthFilter]);
+
+    useEffect(() => {
+        localStorage.setItem('tournament-show-filters', JSON.stringify(showFilters));
+    }, [showFilters]);
 
     if (loading) {
         return (
@@ -124,6 +180,14 @@ export default function TournamentsPage() {
         filtered = filtered.filter(t => typeFilter.includes(t.type));
     }
 
+    if (monthFilter !== 'all') {
+        filtered = filtered.filter(t => {
+            const { startDate } = parseTournamentDates(t);
+            const monthYear = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            return monthYear === monthFilter;
+        });
+    }
+
     if (searchQuery) {
         filtered = filtered.filter(t =>
             t.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -132,6 +196,7 @@ export default function TournamentsPage() {
 
     const { today, upcoming, past } = categorizeTournaments(filtered);
     const types = getUniqueTournamentTypes(tournaments);
+    const months = getUniqueMonths(tournaments);
 
     const typeFilters = [
         { label: 'All', value: 'all' },
@@ -141,87 +206,115 @@ export default function TournamentsPage() {
         }))
     ];
 
-    return (
-        <Container maxWidth="lg" sx={{ py: 5 }}>
-            <Box sx={{ mb: 5 }}>
-                <Typography
-                    variant="h3"
-                    component="h1"
-                    sx={{
-                        fontWeight: 800,
-                        color: '#1A1A2E',
-                        mb: 1,
-                        letterSpacing: '-0.02em',
-                    }}
-                >
-                    Padel Tournaments
-                </Typography>
-                <Typography
-                    variant="body1"
-                    sx={{
-                        color: '#64748B',
-                        fontSize: '1.1rem',
-                    }}
-                >
-                    Discover and follow professional padel tournaments worldwide
-                </Typography>
-            </Box>
+    const monthFilters = [
+        { label: 'All', value: 'all' },
+        ...months.map(month => ({
+            label: formatMonthYear(month),
+            value: month
+        }))
+    ];
 
+    return (
+        <Container maxWidth="lg" sx={{ py: 3 }}>
             {/* Search and Filters */}
-            <Box
-                sx={{
-                    mb: 5,
-                    p: 3,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 3,
-                    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
-                    border: '1px solid rgba(0, 0, 0, 0.06)',
-                }}
-            >
-                <TextField
-                    fullWidth
-                    placeholder="Search tournaments by name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    sx={{
-                        mb: 3,
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 2,
-                            backgroundColor: '#F8FAFC',
-                            '& fieldset': {
-                                borderColor: '#E2E8F0',
-                                borderWidth: 2,
-                            },
-                            '&:hover fieldset': {
-                                borderColor: '#CBD5E1',
-                            },
-                            '&.Mui-focused fieldset': {
-                                borderColor: '#0066CC',
-                            },
-                        },
-                    }}
-                />
-                <Box>
-                    <Typography
-                        variant="body2"
+            <Box sx={{ mb: 3 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Search tournaments..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        size="small"
                         sx={{
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                                backgroundColor: '#FFFFFF',
+                                '& fieldset': {
+                                    borderColor: '#E2E8F0',
+                                },
+                                '&:hover fieldset': {
+                                    borderColor: '#CBD5E1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#0066CC',
+                                },
+                            },
+                        }}
+                    />
+                    <Button
+                        variant={showFilters ? "contained" : "outlined"}
+                        startIcon={<FilterList />}
+                        endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                        onClick={() => setShowFilters(!showFilters)}
+                        sx={{
+                            minWidth: 120,
+                            borderRadius: 2,
+                            textTransform: 'none',
                             fontWeight: 600,
-                            color: '#64748B',
-                            mb: 1.5,
-                            textTransform: 'uppercase',
-                            fontSize: '0.75rem',
-                            letterSpacing: '0.05em',
                         }}
                     >
-                        Filter by Type
-                    </Typography>
-                    <Filter
-                        filters={typeFilters}
-                        activeFilter={typeFilter}
-                        onChange={setTypeFilter}
-                        multiSelect={true}
-                    />
-                </Box>
+                        Filters
+                    </Button>
+                </Stack>
+
+                <Collapse in={showFilters}>
+                    <Box
+                        sx={{
+                            p: 2,
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 2,
+                            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+                            border: '1px solid rgba(0, 0, 0, 0.06)',
+                        }}
+                    >
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: '#64748B',
+                                        mb: 1,
+                                        display: 'block',
+                                        textTransform: 'uppercase',
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Type
+                                </Typography>
+                                <Filter
+                                    filters={typeFilters}
+                                    activeFilter={typeFilter}
+                                    onChange={setTypeFilter}
+                                    multiSelect={true}
+                                />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: '#64748B',
+                                        mb: 1,
+                                        display: 'block',
+                                        textTransform: 'uppercase',
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Month
+                                </Typography>
+                                <Filter
+                                    filters={monthFilters}
+                                    activeFilter={monthFilter}
+                                    onChange={setMonthFilter}
+                                    multiSelect={false}
+                                />
+                            </Box>
+                        </Stack>
+                    </Box>
+                </Collapse>
             </Box>
 
             {/* Favorites Section */}
@@ -255,23 +348,57 @@ export default function TournamentsPage() {
                 </Box>
             )}
 
-            {/* Upcoming Tournaments Section */}
+            {/* Upcoming Tournaments Section - Grouped by Month */}
             {upcoming.length > 0 && (
                 <Box sx={{ mb: 4 }}>
                     <Typography variant="h5" component="h3" gutterBottom fontWeight="bold">
                         Upcoming Tournaments
                     </Typography>
-                    <TournamentGrid tournaments={upcoming} />
+                    {Object.entries(groupTournamentsByMonth(upcoming)).sort().map(([monthYear, monthTournaments]) => (
+                        <Box key={monthYear} sx={{ mb: 4 }}>
+                            <Divider sx={{ mb: 2 }}>
+                                <Typography
+                                    variant="overline"
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: '#64748B',
+                                        fontSize: '0.75rem',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    {formatMonthYear(monthYear)}
+                                </Typography>
+                            </Divider>
+                            <TournamentGrid tournaments={monthTournaments} />
+                        </Box>
+                    ))}
                 </Box>
             )}
 
-            {/* Past Tournaments Section */}
+            {/* Past Tournaments Section - Grouped by Month */}
             {past.length > 0 && (
                 <Box sx={{ mb: 4, opacity: 0.6 }}>
                     <Typography variant="h5" component="h3" gutterBottom fontWeight="bold">
                         Past Tournaments
                     </Typography>
-                    <TournamentGrid tournaments={past} />
+                    {Object.entries(groupTournamentsByMonth(past)).sort().reverse().map(([monthYear, monthTournaments]) => (
+                        <Box key={monthYear} sx={{ mb: 4 }}>
+                            <Divider sx={{ mb: 2 }}>
+                                <Typography
+                                    variant="overline"
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: '#64748B',
+                                        fontSize: '0.75rem',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    {formatMonthYear(monthYear)}
+                                </Typography>
+                            </Divider>
+                            <TournamentGrid tournaments={monthTournaments} />
+                        </Box>
+                    ))}
                 </Box>
             )}
 

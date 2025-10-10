@@ -176,116 +176,175 @@ function AppContent() {
                 }}
             >
                 <Container maxWidth="lg">
-                    <Toolbar sx={{ py: 1.5, px: { xs: 2, sm: 0 } }}>
-                        {/* Back button for tournament detail pages */}
-                        {isTournamentDetail && (
-                            <IconButton
-                                onClick={() => navigate('/')}
-                                sx={{
-                                    mr: 2,
-                                    color: '#64748B',
-                                    '&:hover': {
-                                        backgroundColor: '#F5F7FA',
-                                        color: '#0066CC',
-                                    },
-                                }}
-                            >
-                                <ArrowBackIcon />
-                            </IconButton>
-                        )}
+                    <Toolbar
+                        sx={{
+                            py: 1.5,
+                            px: { xs: 2, sm: 0 },
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            gap: 1.5
+                        }}
+                    >
+                        {/* Main navigation row */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                            {/* Back button for tournament detail pages - hide on mobile */}
+                            {isTournamentDetail && (
+                                <IconButton
+                                    onClick={() => navigate('/')}
+                                    sx={{
+                                        mr: 2,
+                                        color: '#64748B',
+                                        display: { xs: 'none', md: 'flex' },
+                                        '&:hover': {
+                                            backgroundColor: '#F5F7FA',
+                                            color: '#0066CC',
+                                        },
+                                    }}
+                                >
+                                    <ArrowBackIcon />
+                                </IconButton>
+                            )}
 
-                        <Box
-                            component={RouterLink}
-                            to="/"
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                textDecoration: 'none',
-                                flexGrow: 1,
-                                gap: 1.5,
-                            }}
-                        >
                             <Box
-                                sx={{
-                                    backgroundColor: '#0066CC',
-                                    borderRadius: '10px',
-                                    p: 0.8,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                }}
-                            >
-                                <TennisIcon sx={{ fontSize: 24, color: 'white' }} />
-                            </Box>
-                            <Typography
-                                variant="h6"
-                                sx={{
-                                    fontWeight: 800,
-                                    color: '#1A1A2E',
-                                    letterSpacing: '-0.01em',
-                                }}
-                            >
-                                Padely
-                            </Typography>
-                        </Box>
-
-                        {/* Auto-refresh toggle for tournament detail pages */}
-                        {isTournamentDetail && (
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        checked={autoRefresh}
-                                        onChange={(e) => setAutoRefresh(e.target.checked)}
-                                        color="primary"
-                                    />
-                                }
-                                label={
-                                    <Typography
-                                        variant="body2"
-                                        sx={{
-                                            fontWeight: 600,
-                                            color: '#64748B',
-                                        }}
-                                    >
-                                        Auto-refresh
-                                    </Typography>
-                                }
-                                sx={{ mr: 2 }}
-                            />
-                        )}
-
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
                                 component={RouterLink}
                                 to="/"
                                 sx={{
-                                    color: '#64748B',
-                                    fontWeight: 600,
-                                    px: 2,
-                                    '&:hover': {
-                                        backgroundColor: '#F5F7FA',
-                                        color: '#0066CC',
-                                    },
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    textDecoration: 'none',
+                                    flexGrow: 1,
+                                    gap: 1.5,
                                 }}
                             >
-                                Tournaments
-                            </Button>
-                            <Button
-                                component={RouterLink}
-                                to="/rankings?gender=men"
-                                sx={{
-                                    color: '#64748B',
-                                    fontWeight: 600,
-                                    px: 2,
-                                    '&:hover': {
-                                        backgroundColor: '#F5F7FA',
-                                        color: '#0066CC',
-                                    },
-                                }}
-                            >
-                                Rankings
-                            </Button>
+                                <Box
+                                    sx={{
+                                        backgroundColor: '#0066CC',
+                                        borderRadius: '10px',
+                                        p: 0.8,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <TennisIcon sx={{ fontSize: 24, color: 'white' }} />
+                                </Box>
+                                <Typography
+                                    variant="h6"
+                                    sx={{
+                                        fontWeight: 800,
+                                        color: '#1A1A2E',
+                                        letterSpacing: '-0.01em',
+                                    }}
+                                >
+                                    Padely
+                                </Typography>
+                            </Box>
+
+                            {/* Auto-refresh toggle for tournament detail pages - desktop only */}
+                            {isTournamentDetail && (
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={autoRefresh}
+                                            onChange={(e) => setAutoRefresh(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label={
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: '#64748B',
+                                            }}
+                                        >
+                                            Auto-refresh
+                                        </Typography>
+                                    }
+                                    sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}
+                                />
+                            )}
+
+                            {/* Navigation buttons */}
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                    component={RouterLink}
+                                    to="/"
+                                    sx={{
+                                        color: '#64748B',
+                                        fontWeight: 600,
+                                        px: 2,
+                                        '&:hover': {
+                                            backgroundColor: '#F5F7FA',
+                                            color: '#0066CC',
+                                        },
+                                    }}
+                                >
+                                    Tournaments
+                                </Button>
+                                <Button
+                                    component={RouterLink}
+                                    to="/rankings?gender=men"
+                                    sx={{
+                                        color: '#64748B',
+                                        fontWeight: 600,
+                                        px: 2,
+                                        '&:hover': {
+                                            backgroundColor: '#F5F7FA',
+                                            color: '#0066CC',
+                                        },
+                                    }}
+                                >
+                                    Rankings
+                                </Button>
+                            </Box>
                         </Box>
+
+                        {/* Second row on mobile - Back button and Auto-refresh */}
+                        {isTournamentDetail && (
+                            <Box
+                                sx={{
+                                    display: { xs: 'flex', md: 'none' },
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    width: '100%',
+                                }}
+                            >
+                                <IconButton
+                                    onClick={() => navigate('/')}
+                                    sx={{
+                                        color: '#64748B',
+                                        '&:hover': {
+                                            backgroundColor: '#F5F7FA',
+                                            color: '#0066CC',
+                                        },
+                                    }}
+                                >
+                                    <ArrowBackIcon />
+                                </IconButton>
+
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={autoRefresh}
+                                            onChange={(e) => setAutoRefresh(e.target.checked)}
+                                            color="primary"
+                                        />
+                                    }
+                                    label={
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: '#64748B',
+                                            }}
+                                        >
+                                            Auto-refresh
+                                        </Typography>
+                                    }
+                                />
+                            </Box>
+                        )}
                     </Toolbar>
                 </Container>
             </AppBar>
