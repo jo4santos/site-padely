@@ -33,15 +33,9 @@ function StatRow({ label, team1, team2, team1Trend, team2Trend }) {
 
     return (
         <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 500, color: 'text.secondary', fontSize: '0.7rem' }}>
-                {label}
-            </Typography>
             <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box sx={{ minWidth: 70, textAlign: 'right' }}>
                     <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', fontSize: '0.875rem' }}>
-                            {team1}
-                        </Typography>
                         {team1Trend && (
                             <Box sx={{ display: 'flex', alignItems: 'center', color: `${team1Trend.color}.main` }}>
                                 <team1Trend.icon sx={{ fontSize: 14 }} />
@@ -50,43 +44,49 @@ function StatRow({ label, team1, team2, team1Trend, team2Trend }) {
                                 </Typography>
                             </Box>
                         )}
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', fontSize: '0.875rem' }}>
+                            {team1}
+                        </Typography>
                     </Stack>
                 </Box>
                 <Box sx={{ flex: 1, position: 'relative' }}>
                     <Box sx={{
                         display: 'flex',
-                        height: 24,
+                        height: 28,
                         borderRadius: 1,
                         overflow: 'hidden',
-                        backgroundColor: 'action.hover'
+                        backgroundColor: 'action.hover',
+                        position: 'relative'
                     }}>
                         <Box sx={{
                             width: `${percentage1}%`,
                             backgroundColor: 'primary.main',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            px: 0.75
-                        }}>
-                            {percentage1 > 20 && (
-                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.65rem' }}>
-                                    {percentage1.toFixed(0)}%
-                                </Typography>
-                            )}
-                        </Box>
+                            justifyContent: 'flex-end'
+                        }} />
                         <Box sx={{
                             width: `${percentage2}%`,
                             backgroundColor: 'success.main',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'flex-start',
-                            px: 0.75
+                            justifyContent: 'flex-start'
+                        }} />
+                        {/* Label centered on top of bars */}
+                        <Box sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none'
                         }}>
-                            {percentage2 > 20 && (
-                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.65rem' }}>
-                                    {percentage2.toFixed(0)}%
-                                </Typography>
-                            )}
+                            <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.7rem', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                                {label}
+                            </Typography>
                         </Box>
                     </Box>
                 </Box>
@@ -153,22 +153,10 @@ function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name, previous
                 <Typography variant="body1" sx={{ color: 'primary.main', fontWeight: 'bold', fontSize: '0.9rem' }}>
                     {team1Name || 'Team 1'}
                 </Typography>
-                <Typography variant="body1" sx={{ color: 'success.main', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                <Typography variant="body1" align='right' sx={{ color: 'success.main', fontWeight: 'bold', fontSize: '0.9rem' }}>
                     {team2Name || 'Team 2'}
                 </Typography>
             </Stack>
-
-            {previousTeam1Stats && (
-                <Box sx={{ mb: 2, textAlign: 'center' }}>
-                    <Chip
-                        icon={<TrendingUp />}
-                        label="Showing trends vs previous set"
-                        size="small"
-                        color="info"
-                        variant="outlined"
-                    />
-                </Box>
-            )}
 
             <StatsSection
                 title="Match Stats"
@@ -204,6 +192,18 @@ function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name, previous
                     buildStat('Total Won on Return', s => s.totalPoints.totalWonOnReturn, s => s.totalPoints.totalWonOnReturn)
                 ]}
             />
+
+            {previousTeam1Stats && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Chip
+                        icon={<TrendingUp />}
+                        label="Showing trends vs previous set"
+                        size="small"
+                        color="info"
+                        variant="outlined"
+                    />
+                </Box>
+            )}
         </Box>
     );
 }
