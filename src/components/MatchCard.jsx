@@ -158,7 +158,7 @@ function Team({ team }) {
     );
 }
 
-export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false }) {
+export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false, showFollowedBy = false }) {
     const [showStats, setShowStats] = useState(false);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -228,7 +228,11 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                             <Typography variant="body2" color="text.secondary">
                                 {formatLocalTime(match.startDate)}
                             </Typography>
-                            {isToday && !ongoing && getTimeRemaining(match.startDate) && (
+                            {showFollowedBy ? (
+                                <Typography variant="caption" color="warning.main" fontWeight="bold">
+                                    Followed by
+                                </Typography>
+                            ) : isToday && !ongoing && getTimeRemaining(match.startDate) && (
                                 <Typography variant="caption" color="primary.main" fontWeight="bold">
                                     {getTimeRemaining(match.startDate)}
                                 </Typography>
@@ -277,6 +281,36 @@ export function MatchList({ matches, eventId, isToday = false }) {
 
     const firstOngoingIndex = matches.findIndex(m => isMatchOngoing(m));
 
+    // Group matches by court to detect "followed by" situations
+    const courtMap = new Map();
+    matches.forEach(match => {
+        if (!courtMap.has(match.courtName)) {
+            courtMap.set(match.courtName, []);
+        }
+        courtMap.get(match.courtName).push(match);
+    });
+
+    // Check if match should show "Followed by"
+    const shouldShowFollowedBy = (match) => {
+        if (!isToday || isMatchOngoing(match)) return false;
+
+        const courtMatches = courtMap.get(match.courtName) || [];
+
+        // Check if there's an ongoing match on the same court
+        const hasOngoingOnCourt = courtMatches.some(m =>
+            m.matchId !== match.matchId && isMatchOngoing(m)
+        );
+
+        if (!hasOngoingOnCourt) return false;
+
+        // Check if this match's scheduled time has passed
+        const matchDate = parseMatchTime(match.startDate);
+        if (!matchDate) return false;
+
+        const now = new Date();
+        return matchDate < now;
+    };
+
     return (
         <Box>
             {matches.map((match, index) => (
@@ -286,6 +320,7 @@ export function MatchList({ matches, eventId, isToday = false }) {
                     eventId={eventId}
                     isFirstOngoing={index === firstOngoingIndex}
                     isToday={isToday}
+                    showFollowedBy={shouldShowFollowedBy(match)}
                 />
             ))}
         </Box>
