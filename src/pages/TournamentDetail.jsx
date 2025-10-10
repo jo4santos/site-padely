@@ -81,6 +81,7 @@ export default function TournamentDetailPage() {
     const [matchesLoading, setMatchesLoading] = useState(false);
     const { autoRefresh } = useAutoRefresh();
     const intervalRef = useRef(null);
+    const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(20);
 
     // Load tournament info
     useEffect(() => {
@@ -136,19 +137,36 @@ export default function TournamentDetailPage() {
 
     // Auto-refresh
     useEffect(() => {
-        if (!autoRefresh || !tournament) return;
+        if (!autoRefresh || !tournament) {
+            setSecondsUntilRefresh(20);
+            return;
+        }
 
+        // Reset countdown
+        setSecondsUntilRefresh(20);
+
+        // Countdown timer (updates every second)
+        const countdownInterval = setInterval(() => {
+            setSecondsUntilRefresh(prev => {
+                if (prev <= 1) return 20; // Reset to 20 when reaching 0
+                return prev - 1;
+            });
+        }, 1000);
+
+        // Data refresh timer (runs every 20 seconds)
         intervalRef.current = setInterval(() => {
             console.log('Auto-refreshing matches...');
+            setSecondsUntilRefresh(20); // Reset countdown
             getEventMatches(tournament.id, currentDay)
                 .then(matches => {
                     console.log(`Auto-refresh: Loaded ${matches.length} matches`);
                     setAllMatches(matches);
                 })
                 .catch(err => console.error('Auto-refresh error:', err));
-        }, 5000);
+        }, 20000);
 
         return () => {
+            clearInterval(countdownInterval);
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
@@ -218,6 +236,11 @@ export default function TournamentDetailPage() {
                     activeFilter={currentGender}
                     onChange={setCurrentGender}
                 />
+                {autoRefresh && (
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                        Refreshing in {secondsUntilRefresh}s
+                    </Typography>
+                )}
             </Stack>
 
             <Tabs
