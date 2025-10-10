@@ -303,12 +303,16 @@ export function MatchList({ matches, eventId, isToday = false }) {
 
         if (!hasOngoingOnCourt) return false;
 
-        // Check if this match's scheduled time has passed
+        // Check if this match's time has passed OR is very soon (within 30 minutes)
         const matchDate = parseMatchTime(match.startDate);
         if (!matchDate) return false;
 
         const now = new Date();
-        return matchDate < now;
+        const diff = matchDate - now;
+        const thirtyMinutes = 30 * 60 * 1000;
+
+        // Show "Followed by" if time has passed OR starting within 30 minutes
+        return diff < thirtyMinutes;
     };
 
     return (
