@@ -294,16 +294,19 @@ export function MatchList({ matches, eventId, isToday = false }) {
     const shouldShowFollowedBy = (match) => {
         if (!isToday || isMatchOngoing(match)) return false;
 
-        const courtMatches = courtMap.get(match.courtName) || [];
+        // Don't show "Followed by" if match is already completed
+        if (match.team1.isWinner || match.team2.isWinner) return false;
 
         // Check if this match's time has passed
         const matchDate = parseMatchTime(match.startDate);
-        if (!matchDate) return false;
+        if (!matchDate || isNaN(matchDate.getTime())) return false;
 
         const now = new Date();
+        const diff = matchDate - now;
 
-        // Show "Followed by" if scheduled time has passed
-        return matchDate < now;
+        // Show "Followed by" if scheduled time has passed by more than 5 minutes
+        // This aligns with when getTimeRemaining returns null
+        return diff < -5 * 60 * 1000;
     };
 
     return (
