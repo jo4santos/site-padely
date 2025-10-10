@@ -4,9 +4,10 @@ const AutoRefreshContext = createContext();
 
 export function AutoRefreshProvider({ children }) {
     const [autoRefresh, setAutoRefresh] = useState(true);
+    const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(20);
 
     return (
-        <AutoRefreshContext.Provider value={{ autoRefresh, setAutoRefresh }}>
+        <AutoRefreshContext.Provider value={{ autoRefresh, setAutoRefresh, secondsUntilRefresh, setSecondsUntilRefresh }}>
             {children}
         </AutoRefreshContext.Provider>
     );

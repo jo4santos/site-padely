@@ -160,7 +160,7 @@ const theme = createTheme({
 function AppContent() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { autoRefresh, setAutoRefresh } = useAutoRefresh();
+    const { autoRefresh, setAutoRefresh, secondsUntilRefresh } = useAutoRefresh();
 
     // Check if we're on a tournament detail page
     const isTournamentDetail = location.pathname.startsWith('/tournament/');
@@ -243,27 +243,34 @@ function AppContent() {
 
                             {/* Auto-refresh toggle for tournament detail pages - desktop only */}
                             {isTournamentDetail && (
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={autoRefresh}
-                                            onChange={(e) => setAutoRefresh(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label={
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                fontWeight: 600,
-                                                color: '#64748B',
-                                            }}
-                                        >
-                                            Auto-refresh
+                                <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', alignItems: 'flex-end', mr: 2, minHeight: '40px', justifyContent: 'center' }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={autoRefresh}
+                                                onChange={(e) => setAutoRefresh(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label={
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    color: '#64748B',
+                                                }}
+                                            >
+                                                Auto-refresh
+                                            </Typography>
+                                        }
+                                        sx={{ m: 0, mb: autoRefresh ? 0 : 0 }}
+                                    />
+                                    {autoRefresh && (
+                                        <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem', position: 'absolute', mt: 3.5, mr: 0.5 }}>
+                                            ... in {secondsUntilRefresh}s
                                         </Typography>
-                                    }
-                                    sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}
-                                />
+                                    )}
+                                </Box>
                             )}
 
                             {/* Navigation buttons */}
@@ -324,26 +331,34 @@ function AppContent() {
                                     <ArrowBackIcon />
                                 </IconButton>
 
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={autoRefresh}
-                                            onChange={(e) => setAutoRefresh(e.target.checked)}
-                                            color="primary"
-                                        />
-                                    }
-                                    label={
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                fontWeight: 600,
-                                                color: '#64748B',
-                                            }}
-                                        >
-                                            Auto-refresh
+                                <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: '40px', justifyContent: 'center' }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={autoRefresh}
+                                                onChange={(e) => setAutoRefresh(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label={
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    fontWeight: 600,
+                                                    color: '#64748B',
+                                                }}
+                                            >
+                                                Auto-refresh
+                                            </Typography>
+                                        }
+                                        sx={{ m: 0 }}
+                                    />
+                                    {autoRefresh && (
+                                        <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem', position: 'absolute', ml: 4.5, mt: 3.5 }}>
+                                            ... in {secondsUntilRefresh}s
                                         </Typography>
-                                    }
-                                />
+                                    )}
+                                </Box>
                             </Box>
                         )}
                     </Toolbar>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Typography, LinearProgress, Stack, Tabs, Tab, Chip } from '@mui/material';
+import { Box, Typography, Stack, Tabs, Tab, Chip } from '@mui/material';
 import { TrendingUp, TrendingDown, TrendingFlat } from '@mui/icons-material';
 
 /**
@@ -27,72 +27,83 @@ function calculateTrend(currentValue, previousValue) {
 function StatRow({ label, team1, team2, team1Trend, team2Trend }) {
     const value1 = parseStatValue(team1);
     const value2 = parseStatValue(team2);
+    const total = value1 + value2;
+    const percentage1 = total > 0 ? (value1 / total) * 100 : 50;
+    const percentage2 = total > 0 ? (value2 / total) * 100 : 50;
 
     return (
         <Box sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 0.5 }}>
-                <Box sx={{ minWidth: 80, textAlign: 'right' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                        {team1}
-                    </Typography>
-                    {team1Trend && (
-                        <Chip
-                            icon={<team1Trend.icon />}
-                            label={team1Trend.diff > 0 ? `+${team1Trend.diff}` : team1Trend.diff}
-                            size="small"
-                            color={team1Trend.color}
-                            sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }}
-                        />
-                    )}
+            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 500, color: 'text.secondary', fontSize: '0.7rem' }}>
+                {label}
+            </Typography>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+                <Box sx={{ minWidth: 70, textAlign: 'right' }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="flex-end">
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main', fontSize: '0.875rem' }}>
+                            {team1}
+                        </Typography>
+                        {team1Trend && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: `${team1Trend.color}.main` }}>
+                                <team1Trend.icon sx={{ fontSize: 14 }} />
+                                <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.65rem' }}>
+                                    {team1Trend.diff > 0 ? `+${team1Trend.diff}` : team1Trend.diff}
+                                </Typography>
+                            </Box>
+                        )}
+                    </Stack>
                 </Box>
-                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                        <LinearProgress
-                            variant="determinate"
-                            value={value1}
-                            sx={{
-                                width: `${value1}%`,
-                                height: 8,
-                                borderRadius: 1,
-                                backgroundColor: 'transparent',
-                                '& .MuiLinearProgress-bar': {
-                                    backgroundColor: 'primary.main'
-                                }
-                            }}
-                        />
-                    </Box>
-                    <Typography variant="body2" sx={{ minWidth: 150, textAlign: 'center', fontWeight: 500 }}>
-                        {label}
-                    </Typography>
-                    <Box sx={{ flex: 1 }}>
-                        <LinearProgress
-                            variant="determinate"
-                            value={value2}
-                            sx={{
-                                width: `${value2}%`,
-                                height: 8,
-                                borderRadius: 1,
-                                backgroundColor: 'transparent',
-                                '& .MuiLinearProgress-bar': {
-                                    backgroundColor: 'success.main'
-                                }
-                            }}
-                        />
+                <Box sx={{ flex: 1, position: 'relative' }}>
+                    <Box sx={{
+                        display: 'flex',
+                        height: 24,
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        backgroundColor: 'action.hover'
+                    }}>
+                        <Box sx={{
+                            width: `${percentage1}%`,
+                            backgroundColor: 'primary.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            px: 0.75
+                        }}>
+                            {percentage1 > 20 && (
+                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.65rem' }}>
+                                    {percentage1.toFixed(0)}%
+                                </Typography>
+                            )}
+                        </Box>
+                        <Box sx={{
+                            width: `${percentage2}%`,
+                            backgroundColor: 'success.main',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            px: 0.75
+                        }}>
+                            {percentage2 > 20 && (
+                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.65rem' }}>
+                                    {percentage2.toFixed(0)}%
+                                </Typography>
+                            )}
+                        </Box>
                     </Box>
                 </Box>
-                <Box sx={{ minWidth: 80 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                        {team2}
-                    </Typography>
-                    {team2Trend && (
-                        <Chip
-                            icon={<team2Trend.icon />}
-                            label={team2Trend.diff > 0 ? `+${team2Trend.diff}` : team2Trend.diff}
-                            size="small"
-                            color={team2Trend.color}
-                            sx={{ height: 18, fontSize: '0.65rem', mt: 0.5 }}
-                        />
-                    )}
+                <Box sx={{ minWidth: 70 }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'success.main', fontSize: '0.875rem' }}>
+                            {team2}
+                        </Typography>
+                        {team2Trend && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', color: `${team2Trend.color}.main` }}>
+                                <team2Trend.icon sx={{ fontSize: 14 }} />
+                                <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.65rem' }}>
+                                    {team2Trend.diff > 0 ? `+${team2Trend.diff}` : team2Trend.diff}
+                                </Typography>
+                            </Box>
+                        )}
+                    </Stack>
                 </Box>
             </Stack>
         </Box>
@@ -138,11 +149,11 @@ function StatsForPeriod({ team1Stats, team2Stats, team1Name, team2Name, previous
 
     return (
         <Box sx={{ p: 2 }}>
-            <Stack direction="row" justifyContent="space-around" sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+            <Stack direction="row" justifyContent="space-around" sx={{ mb: 2 }}>
+                <Typography variant="body1" sx={{ color: 'primary.main', fontWeight: 'bold', fontSize: '0.9rem' }}>
                     {team1Name || 'Team 1'}
                 </Typography>
-                <Typography variant="h6" sx={{ color: 'success.main', fontWeight: 'bold' }}>
+                <Typography variant="body1" sx={{ color: 'success.main', fontWeight: 'bold', fontSize: '0.9rem' }}>
                     {team2Name || 'Team 2'}
                 </Typography>
             </Stack>

@@ -5,8 +5,13 @@ import {
     Typography,
     Box,
     Stack,
-    CircularProgress
+    CircularProgress,
+    TextField,
+    Button,
+    Collapse,
+    Popover
 } from '@mui/material';
+import { FilterList, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { getTournaments, getEventMatches } from '../api/api.service';
 import { MatchList } from '../components/MatchCard';
 import Filter from '../components/Filter';
@@ -79,9 +84,22 @@ export default function TournamentDetailPage() {
     const [currentGender, setCurrentGender] = useState('all');
     const [allMatches, setAllMatches] = useState([]);
     const [matchesLoading, setMatchesLoading] = useState(false);
-    const { autoRefresh } = useAutoRefresh();
+    const { autoRefresh, setSecondsUntilRefresh } = useAutoRefresh();
     const intervalRef = useRef(null);
-    const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(20);
+    const [playerSearch, setPlayerSearch] = useState('');
+    const [courtFilter, setCourtFilter] = useState('all');
+    const [showFilters, setShowFilters] = useState(false);
+    const [imageAnchorEl, setImageAnchorEl] = useState(null);
+
+    const handleImageMouseEnter = (e) => {
+        setImageAnchorEl(e.currentTarget);
+    };
+
+    const handleImageMouseLeave = () => {
+        setImageAnchorEl(null);
+    };
+
+    const imagePopoverOpen = Boolean(imageAnchorEl);
 
     // Load tournament info
     useEffect(() => {
@@ -201,10 +219,19 @@ export default function TournamentDetailPage() {
 
     const daysInfo = calculateDaysWithDates(tournament.startDate, tournament.endDate);
 
-    // Filter matches by gender
+    // Get unique courts from all matches
+    const uniqueCourts = [...new Set(allMatches.map(m => m.courtName))].sort();
+    const courtFilters = [
+        { label: 'All Courts', value: 'all' },
+        ...uniqueCourts.map(court => ({ label: court, value: court }))
+    ];
+
+    // Filter matches by gender, player, and court
     let filteredMatches = allMatches;
+
+    // Gender filter
     if (currentGender !== 'all') {
-        filteredMatches = allMatches.filter(match => {
+        filteredMatches = filteredMatches.filter(match => {
             const roundName = match.roundName.toLowerCase();
             if (currentGender === 'men') {
                 return roundName.includes('men') && !roundName.includes('women');
@@ -215,6 +242,27 @@ export default function TournamentDetailPage() {
         });
     }
 
+    // Player search filter
+    if (playerSearch) {
+        filteredMatches = filteredMatches.filter(match => {
+            const searchLower = playerSearch.toLowerCase();
+            const team1Player1 = match.team1?.player1?.name?.toLowerCase() || '';
+            const team1Player2 = match.team1?.player2?.name?.toLowerCase() || '';
+            const team2Player1 = match.team2?.player1?.name?.toLowerCase() || '';
+            const team2Player2 = match.team2?.player2?.name?.toLowerCase() || '';
+
+            return team1Player1.includes(searchLower) ||
+                   team1Player2.includes(searchLower) ||
+                   team2Player1.includes(searchLower) ||
+                   team2Player2.includes(searchLower);
+        });
+    }
+
+    // Court filter
+    if (courtFilter !== 'all') {
+        filteredMatches = filteredMatches.filter(match => match.courtName === courtFilter);
+    }
+
     const genderFilters = [
         { label: 'All', value: 'all' },
         { label: 'Men', value: 'men' },
@@ -223,25 +271,245 @@ export default function TournamentDetailPage() {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Typography variant="h3" component="h2" gutterBottom fontWeight="bold">
-                {tournament.name}
-            </Typography>
-            <Typography variant="body1" color="text.secondary" gutterBottom>
-                {tournament.startDate} - {tournament.endDate}
-            </Typography>
-
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3, flexWrap: 'wrap' }}>
-                <Filter
-                    filters={genderFilters}
-                    activeFilter={currentGender}
-                    onChange={setCurrentGender}
-                />
-                {autoRefresh && (
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-                        Refreshing in {secondsUntilRefresh}s
-                    </Typography>
+            {/* Tournament Header with Image */}
+            <Box
+                sx={{
+                    mb: 3,
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 1.5,
+                    boxShadow: '0px 2px 12px rgba(0, 0, 0, 0.08)',
+                    border: '1px solid rgba(0, 0, 0, 0.06)',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    height: { xs: 'auto', sm: 100 }
+                }}
+            >
+                {/* Tournament Image */}
+                {tournament.cover && (
+                    <Box
+                        onMouseEnter={handleImageMouseEnter}
+                        onMouseLeave={handleImageMouseLeave}
+                        sx={{
+                            width: { xs: '100%', sm: 150 },
+                            height: { xs: 120, sm: '100%' },
+                            flexShrink: 0,
+                            overflow: 'hidden',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            borderRadius: { xs: '0', sm: '6px 0 0 6px' }
+                        }}
+                    >
+                        <Box
+                            component="img"
+                            src={tournament.cover}
+                            alt={tournament.name}
+                            sx={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                transition: 'transform 0.3s ease-in-out',
+                                transform: imagePopoverOpen ? 'scale(1.05)' : 'scale(1)'
+                            }}
+                            onError={(e) => e.target.style.display = 'none'}
+                        />
+                    </Box>
                 )}
-            </Stack>
+
+                {/* Tournament Info */}
+                <Box sx={{ flex: 1, minWidth: 0, p: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <Typography
+                        variant="h5"
+                        component="h1"
+                        sx={{
+                            fontWeight: 700,
+                            color: '#1E293B',
+                            mb: 0.5,
+                            fontSize: '1.25rem',
+                            lineHeight: 1.2
+                        }}
+                    >
+                        {tournament.name}
+                    </Typography>
+                    <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                        <Typography
+                            variant="body2"
+                            sx={{
+                                color: '#64748B',
+                                fontWeight: 500,
+                            }}
+                        >
+                            {tournament.startDate} - {tournament.endDate}
+                        </Typography>
+                        {tournament.href && (
+                            <Box
+                                component="a"
+                                href={tournament.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    color: 'primary.main',
+                                    textDecoration: 'none',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    '&:hover': {
+                                        textDecoration: 'underline'
+                                    }
+                                }}
+                            >
+                                View Website →
+                            </Box>
+                        )}
+                    </Stack>
+                </Box>
+            </Box>
+
+            {/* Image Popover */}
+            <Popover
+                open={imagePopoverOpen}
+                anchorEl={imageAnchorEl}
+                onClose={handleImageMouseLeave}
+                disableRestoreFocus
+                sx={{
+                    pointerEvents: 'none'
+                }}
+                anchorOrigin={{
+                    vertical: 'center',
+                    horizontal: 'left'
+                }}
+                transformOrigin={{
+                    vertical: 'center',
+                    horizontal: 'right'
+                }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            pointerEvents: 'none',
+                            boxShadow: 8,
+                            border: '2px solid',
+                            borderColor: 'primary.main',
+                            overflow: 'hidden'
+                        }
+                    }
+                }}
+            >
+                <Box
+                    component="img"
+                    src={tournament.cover}
+                    alt={tournament.name}
+                    sx={{
+                        maxWidth: 800,
+                        maxHeight: 700,
+                        width: 'auto',
+                        height: 'auto',
+                        objectFit: 'contain',
+                        display: 'block'
+                    }}
+                    onError={(e) => e.target.src = 'https://via.placeholder.com/800x700?text=Tournament'}
+                />
+            </Popover>
+
+            {/* Search and Filters */}
+            <Box sx={{ mb: 3 }}>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                    <TextField
+                        fullWidth
+                        placeholder="Search by player name..."
+                        value={playerSearch}
+                        onChange={(e) => setPlayerSearch(e.target.value)}
+                        size="small"
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                                backgroundColor: '#FFFFFF',
+                                '& fieldset': {
+                                    borderColor: '#E2E8F0',
+                                },
+                                '&:hover fieldset': {
+                                    borderColor: '#CBD5E1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#0066CC',
+                                },
+                            },
+                        }}
+                    />
+                    <Button
+                        variant={showFilters ? "contained" : "outlined"}
+                        startIcon={<FilterList />}
+                        endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                        onClick={() => setShowFilters(!showFilters)}
+                        sx={{
+                            minWidth: 120,
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Filters
+                    </Button>
+                </Stack>
+
+                <Collapse in={showFilters}>
+                    <Box
+                        sx={{
+                            p: 2,
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 2,
+                            boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)',
+                            border: '1px solid rgba(0, 0, 0, 0.06)',
+                        }}
+                    >
+                        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: '#64748B',
+                                        mb: 1,
+                                        display: 'block',
+                                        textTransform: 'uppercase',
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Gender
+                                </Typography>
+                                <Filter
+                                    filters={genderFilters}
+                                    activeFilter={currentGender}
+                                    onChange={setCurrentGender}
+                                />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: '#64748B',
+                                        mb: 1,
+                                        display: 'block',
+                                        textTransform: 'uppercase',
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Court
+                                </Typography>
+                                <Filter
+                                    filters={courtFilters}
+                                    activeFilter={courtFilter}
+                                    onChange={setCourtFilter}
+                                />
+                            </Box>
+                        </Stack>
+                    </Box>
+                </Collapse>
+            </Box>
 
             <Tabs
                 tabs={daysInfo}

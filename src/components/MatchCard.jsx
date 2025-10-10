@@ -10,7 +10,8 @@ import {
     Collapse,
     IconButton,
     CircularProgress,
-    Alert
+    Alert,
+    Divider
 } from '@mui/material';
 import { ExpandMore as ExpandMoreIcon, SportsTennis as TennisIcon } from '@mui/icons-material';
 import { getMatchStats } from '../api/api.service';
@@ -195,7 +196,7 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     return (
         <Card
             sx={{
-                mb: 2,
+                height: '100%',
                 border: ongoing ? 2 : 1,
                 borderColor: ongoing ? 'error.main' : 'divider',
                 ...(isFirstOngoing && {
@@ -208,10 +209,7 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                     <Box>
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Typography variant="body2" color="text.secondary">
-                                {match.courtName}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                • {match.roundName}
+                                {match.roundName}
                             </Typography>
                             {ongoing && (
                                 <Chip
@@ -238,16 +236,36 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                                 </Typography>
                             )}
                         </Box>
-                        <IconButton
+                        <Box
                             onClick={toggleStats}
-                            size="small"
                             sx={{
-                                transform: showStats ? 'rotate(180deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.3s'
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.5,
+                                cursor: 'pointer',
+                                backgroundColor: 'action.hover',
+                                borderRadius: 1,
+                                px: 1,
+                                py: 0.5,
+                                '&:hover': {
+                                    backgroundColor: 'action.selected'
+                                }
                             }}
                         >
-                            <ExpandMoreIcon />
-                        </IconButton>
+                            <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                Stats
+                            </Typography>
+                            <IconButton
+                                size="small"
+                                sx={{
+                                    transform: showStats ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.3s',
+                                    p: 0.5
+                                }}
+                            >
+                                <ExpandMoreIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
                     </Stack>
                 </Stack>
 
@@ -274,21 +292,27 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     );
 }
 
+// Group matches by court name
+function groupMatchesByCourt(matches) {
+    const grouped = {};
+    matches.forEach(match => {
+        const court = match.courtName || 'Unknown Court';
+        if (!grouped[court]) {
+            grouped[court] = [];
+        }
+        grouped[court].push(match);
+    });
+    return grouped;
+}
+
 export function MatchList({ matches, eventId, isToday = false }) {
     if (!matches || matches.length === 0) {
         return <Typography>No matches scheduled for this day.</Typography>;
     }
 
-    const firstOngoingIndex = matches.findIndex(m => isMatchOngoing(m));
-
-    // Group matches by court to detect "followed by" situations
-    const courtMap = new Map();
-    matches.forEach(match => {
-        if (!courtMap.has(match.courtName)) {
-            courtMap.set(match.courtName, []);
-        }
-        courtMap.get(match.courtName).push(match);
-    });
+    // Separate ongoing and other matches
+    const ongoingMatches = matches.filter(m => isMatchOngoing(m));
+    const otherMatches = matches.filter(m => !isMatchOngoing(m));
 
     // Check if match should show "Followed by"
     const shouldShowFollowedBy = (match) => {
@@ -309,18 +333,90 @@ export function MatchList({ matches, eventId, isToday = false }) {
         return diff < -5 * 60 * 1000;
     };
 
-    return (
-        <Box>
-            {matches.map((match, index) => (
+    const renderMatchGrid = (matchesToRender) => (
+        <Box
+            sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    lg: 'repeat(2, 1fr)'
+                },
+                gap: 2,
+                width: '100%',
+                '& > *': {
+                    minWidth: 0,
+                    maxWidth: '100%'
+                }
+            }}
+        >
+            {matchesToRender.map((match) => (
                 <MatchCard
                     key={match.matchId}
                     match={match}
                     eventId={eventId}
-                    isFirstOngoing={index === firstOngoingIndex}
+                    isFirstOngoing={false}
                     isToday={isToday}
                     showFollowedBy={shouldShowFollowedBy(match)}
                 />
             ))}
+        </Box>
+    );
+
+    return (
+        <Box>
+            {ongoingMatches.length > 0 && (
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                        Live Matches
+                    </Typography>
+                    {Object.entries(groupMatchesByCourt(ongoingMatches)).map(([courtName, courtMatches]) => (
+                        <Box key={courtName} sx={{ mb: 4 }}>
+                            <Divider sx={{ mb: 2 }}>
+                                <Typography
+                                    variant="overline"
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: '#64748B',
+                                        fontSize: '0.75rem',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    {courtName}
+                                </Typography>
+                            </Divider>
+                            {renderMatchGrid(courtMatches)}
+                        </Box>
+                    ))}
+                </Box>
+            )}
+
+            {otherMatches.length > 0 && (
+                <Box>
+                    {ongoingMatches.length > 0 && (
+                        <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                            Scheduled Matches
+                        </Typography>
+                    )}
+                    {Object.entries(groupMatchesByCourt(otherMatches)).map(([courtName, courtMatches]) => (
+                        <Box key={courtName} sx={{ mb: 4 }}>
+                            <Divider sx={{ mb: 2 }}>
+                                <Typography
+                                    variant="overline"
+                                    sx={{
+                                        fontWeight: 700,
+                                        color: '#64748B',
+                                        fontSize: '0.75rem',
+                                        letterSpacing: '0.1em',
+                                    }}
+                                >
+                                    {courtName}
+                                </Typography>
+                            </Divider>
+                            {renderMatchGrid(courtMatches)}
+                        </Box>
+                    ))}
+                </Box>
+            )}
         </Box>
     );
 }
