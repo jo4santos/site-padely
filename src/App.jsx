@@ -218,7 +218,7 @@ function AppContent() {
                             >
                                 <Box
                                     component="img"
-                                    src="/favicon-32x32.png"
+                                    src={`${import.meta.env.BASE_URL}favicon-32x32.png`}
                                     alt="Padely Logo"
                                     sx={{
                                         width: 40,
