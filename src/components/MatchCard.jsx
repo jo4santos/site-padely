@@ -296,23 +296,14 @@ export function MatchList({ matches, eventId, isToday = false }) {
 
         const courtMatches = courtMap.get(match.courtName) || [];
 
-        // Check if there's an ongoing match on the same court
-        const hasOngoingOnCourt = courtMatches.some(m =>
-            m.matchId !== match.matchId && isMatchOngoing(m)
-        );
-
-        if (!hasOngoingOnCourt) return false;
-
-        // Check if this match's time has passed OR is very soon (within 30 minutes)
+        // Check if this match's time has passed
         const matchDate = parseMatchTime(match.startDate);
         if (!matchDate) return false;
 
         const now = new Date();
-        const diff = matchDate - now;
-        const thirtyMinutes = 30 * 60 * 1000;
 
-        // Show "Followed by" if time has passed OR starting within 30 minutes
-        return diff < thirtyMinutes;
+        // Show "Followed by" if scheduled time has passed
+        return matchDate < now;
     };
 
     return (
