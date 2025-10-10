@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardMedia, CardContent, Typography, Chip, Box, IconButton, Popover } from '@mui/material';
-import { Star, StarBorder, OpenInNew } from '@mui/icons-material';
+import { Star, StarBorder, OpenInNew, FiberManualRecord as LiveIcon } from '@mui/icons-material';
 import { useFavorites } from '../hooks/useFavorites';
 
 /**
@@ -10,6 +10,22 @@ import { useFavorites } from '../hooks/useFavorites';
 
 function formatType(type) {
     return type.replace(/-/g, ' ').toUpperCase();
+}
+
+function isTournamentLive(tournament) {
+    const [startDay, startMonth, startYear] = tournament.startDate.split('/');
+    const [endDay, endMonth, endYear] = tournament.endDate.split('/');
+
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return startDate <= today && endDate >= today;
 }
 
 function getTypeColor(type) {
@@ -39,6 +55,7 @@ export default function TournamentCard({ tournament }) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const favorite = isFavorite(tournament.id);
     const [anchorEl, setAnchorEl] = useState(null);
+    const isLive = isTournamentLive(tournament);
 
     const handleFavoriteClick = (e) => {
         e.preventDefault();
@@ -171,9 +188,20 @@ export default function TournamentCard({ tournament }) {
                             </IconButton>
                         </Box>
                         <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <Typography variant="h6" component="h3" gutterBottom noWrap>
-                                {tournament.name}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <Typography variant="h6" component="h3" noWrap sx={{ flex: 1, minWidth: 0 }}>
+                                    {tournament.name}
+                                </Typography>
+                                {isLive && (
+                                    <Chip
+                                        icon={<LiveIcon />}
+                                        label="LIVE"
+                                        color="error"
+                                        size="small"
+                                        sx={{ fontWeight: 'bold', flexShrink: 0 }}
+                                    />
+                                )}
+                            </Box>
                             <Typography variant="body2" color="text.secondary">
                                 {tournament.startDate} - {tournament.endDate}
                             </Typography>

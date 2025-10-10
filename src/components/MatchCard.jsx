@@ -25,6 +25,77 @@ function isMatchOngoing(match) {
            (match.team1.points && match.team1.points !== '' && !match.team1.isWinner && !match.team2.isWinner);
 }
 
+function parseMatchTime(timeString) {
+    // Parse time like "7:00 AM" or "5:30 PM"
+    if (!timeString) return null;
+
+    const match = timeString.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return null;
+
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const period = match[3].toUpperCase();
+
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+        hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+    }
+
+    // Create date with today's date and the parsed time
+    // Assume the time is in UTC
+    const now = new Date();
+    const matchDate = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        hours,
+        minutes
+    ));
+
+    return matchDate;
+}
+
+function formatLocalTime(timeString) {
+    const matchDate = parseMatchTime(timeString);
+    if (!matchDate || isNaN(matchDate.getTime())) return timeString;
+
+    // Format to local time (just time, no date)
+    return matchDate.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+}
+
+function getTimeRemaining(timeString) {
+    const matchDate = parseMatchTime(timeString);
+    if (!matchDate || isNaN(matchDate.getTime())) return null;
+
+    const now = new Date();
+    const diff = matchDate - now;
+
+    // If match has already started or passed (with 5 minute buffer)
+    if (diff < -5 * 60 * 1000) return null;
+
+    // If starting very soon (within 5 minutes)
+    if (diff < 5 * 60 * 1000 && diff >= 0) {
+        return 'starting soon';
+    }
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (hours > 0) {
+        return `in ${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `in ${minutes}m`;
+    } else {
+        return null;
+    }
+}
+
 function getTeamName(team) {
     if (!team || !team.player1) return '';
     const player1Name = team.player1.name;
@@ -87,7 +158,7 @@ function Team({ team }) {
     );
 }
 
-export default function MatchCard({ match, eventId, isFirstOngoing = false }) {
+export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false }) {
     const [showStats, setShowStats] = useState(false);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -153,9 +224,16 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false }) {
                         </Stack>
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="body2" color="text.secondary">
-                            {match.startDate}
-                        </Typography>
+                        <Box sx={{ textAlign: 'right' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                {formatLocalTime(match.startDate)}
+                            </Typography>
+                            {isToday && !ongoing && getTimeRemaining(match.startDate) && (
+                                <Typography variant="caption" color="primary.main" fontWeight="bold">
+                                    {getTimeRemaining(match.startDate)}
+                                </Typography>
+                            )}
+                        </Box>
                         <IconButton
                             onClick={toggleStats}
                             size="small"
@@ -192,7 +270,7 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false }) {
     );
 }
 
-export function MatchList({ matches, eventId }) {
+export function MatchList({ matches, eventId, isToday = false }) {
     if (!matches || matches.length === 0) {
         return <Typography>No matches scheduled for this day.</Typography>;
     }
@@ -207,6 +285,7 @@ export function MatchList({ matches, eventId }) {
                     match={match}
                     eventId={eventId}
                     isFirstOngoing={index === firstOngoingIndex}
+                    isToday={isToday}
                 />
             ))}
         </Box>

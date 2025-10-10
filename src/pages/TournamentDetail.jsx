@@ -232,7 +232,11 @@ export default function TournamentDetailPage() {
                         <CircularProgress />
                     </Box>
                 ) : (
-                    <MatchList matches={filteredMatches} eventId={tournament.eventId} />
+                    <MatchList
+                        matches={filteredMatches}
+                        eventId={tournament.eventId}
+                        isToday={daysInfo.find(d => d.value === currentDay)?.isToday || false}
+                    />
                 )}
             </Box>
         </Container>
