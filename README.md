@@ -57,12 +57,38 @@ Legacy files (can be removed):
 
 - Node.js 20+
 - Python 3 (for serving production build)
+- OpenAI API key (for match announcements feature)
 
 ### Installation
 
 ```bash
 npm install
 ```
+
+### Setup Environment Variables
+
+For local development, you need to configure your OpenAI API key:
+
+**Quick Setup:**
+```bash
+# Run the setup script
+./setup-dev.sh
+
+# Then edit .env.development and add your API key
+# Get your key from: https://platform.openai.com/api-keys
+```
+
+**Manual Setup:**
+```bash
+# Copy the example environment file
+cp .env.example .env.development
+
+# Edit .env.development and add your OpenAI API key
+```
+
+📖 **See [SETUP.md](SETUP.md) for detailed setup instructions, including GitHub Actions deployment.**
+
+⚠️ **Important:** Never commit `.env.development` to git - it's already in `.gitignore`.
 
 ### Development
 
