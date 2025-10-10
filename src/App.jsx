@@ -217,17 +217,18 @@ function AppContent() {
                                 }}
                             >
                                 <Box
+                                    component="img"
+                                    src="/favicon-32x32.png"
+                                    alt="Padely Logo"
                                     sx={{
-                                        backgroundColor: '#0066CC',
+                                        width: 40,
+                                        height: 40,
                                         borderRadius: '10px',
-                                        p: 0.8,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}
-                                >
-                                    <TennisIcon sx={{ fontSize: 24, color: 'white' }} />
-                                </Box>
+                                />
                                 <Typography
                                     variant="h6"
                                     sx={{
