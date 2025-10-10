@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Card,
     CardContent,
@@ -11,11 +11,21 @@ import {
     IconButton,
     CircularProgress,
     Alert,
-    Divider
+    Divider,
+    Tooltip
 } from '@mui/material';
-import { ExpandMore as ExpandMoreIcon, SportsTennis as TennisIcon } from '@mui/icons-material';
+import { 
+    ExpandMore as ExpandMoreIcon, 
+    SportsTennis as TennisIcon,
+    Notifications as NotificationsIcon,
+    NotificationsOff as NotificationsOffIcon,
+    VolumeUp as VolumeUpIcon,
+    VolumeOff as VolumeOffIcon,
+    NotificationsActive as NotificationsActiveIcon
+} from '@mui/icons-material';
 import { getMatchStats } from '../api/api.service';
 import MatchStats from './MatchStats';
+import { useAnnouncements } from '../contexts/AnnouncementContext';
 
 /**
  * Match Card Component using MUI
@@ -164,8 +174,26 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { toggleVoiceAnnouncements, toggleNotifications, isVoiceEnabled, isNotificationEnabled, updateMatchState } = useAnnouncements();
 
     const ongoing = isMatchOngoing(match);
+    const voiceEnabled = isVoiceEnabled(match.matchId);
+    const notificationEnabled = isNotificationEnabled(match.matchId);
+
+    // Update match state in context when match data changes
+    useEffect(() => {
+        if (voiceEnabled || notificationEnabled) {
+            updateMatchState(match.matchId, match);
+        }
+    }, [match, match.matchId, voiceEnabled, notificationEnabled, updateMatchState]);
+
+    const handleToggleVoice = () => {
+        toggleVoiceAnnouncements(match.matchId, match);
+    };
+
+    const handleToggleNotification = () => {
+        toggleNotifications(match.matchId, match);
+    };
 
     const toggleStats = async () => {
         if (showStats) {
@@ -236,6 +264,34 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                                 </Typography>
                             )}
                         </Stack>
+                        <Tooltip title={voiceEnabled ? "Disable voice" : "Enable voice"}>
+                            <IconButton
+                                size="small"
+                                onClick={handleToggleVoice}
+                                sx={{
+                                    color: voiceEnabled ? 'primary.main' : 'text.secondary',
+                                    '&:hover': {
+                                        backgroundColor: 'action.hover'
+                                    }
+                                }}
+                            >
+                                {voiceEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title={notificationEnabled ? "Disable notifications" : "Enable notifications"}>
+                            <IconButton
+                                size="small"
+                                onClick={handleToggleNotification}
+                                sx={{
+                                    color: notificationEnabled ? 'success.main' : 'text.secondary',
+                                    '&:hover': {
+                                        backgroundColor: 'action.hover'
+                                    }
+                                }}
+                            >
+                                {notificationEnabled ? <NotificationsActiveIcon fontSize="small" /> : <NotificationsOffIcon fontSize="small" />}
+                            </IconButton>
+                        </Tooltip>
                         <Box
                             onClick={toggleStats}
                             sx={{

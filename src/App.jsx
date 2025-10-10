@@ -6,6 +6,8 @@ import TournamentsPage from './pages/Tournaments';
 import TournamentDetailPage from './pages/TournamentDetail';
 import RankingsPage from './pages/Rankings';
 import { AutoRefreshProvider, useAutoRefresh } from './contexts/AutoRefreshContext';
+import { AnnouncementProvider, useAnnouncements } from './contexts/AnnouncementContext';
+import MatchNotification from './components/MatchNotification';
 
 // Create custom theme with vibrant padel colors and strong contrast
 const theme = createTheme({
@@ -161,6 +163,7 @@ function AppContent() {
     const location = useLocation();
     const navigate = useNavigate();
     const { autoRefresh, setAutoRefresh, secondsUntilRefresh } = useAutoRefresh();
+    const { currentNotification, closeNotification } = useAnnouncements();
 
     // Check if we're on a tournament detail page
     const isTournamentDetail = location.pathname.startsWith('/tournament/');
@@ -372,6 +375,12 @@ function AppContent() {
                     <Route path="/rankings" element={<RankingsPage />} />
                 </Routes>
             </Box>
+
+            {/* Match Notification - shown when page is visible */}
+            <MatchNotification
+                notification={currentNotification}
+                onClose={closeNotification}
+            />
         </Box>
     );
 }
@@ -385,7 +394,9 @@ function App() {
             <CssBaseline />
             <BrowserRouter basename={basename}>
                 <AutoRefreshProvider>
-                    <AppContent />
+                    <AnnouncementProvider>
+                        <AppContent />
+                    </AnnouncementProvider>
                 </AutoRefreshProvider>
             </BrowserRouter>
         </ThemeProvider>

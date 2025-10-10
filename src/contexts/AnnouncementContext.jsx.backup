@@ -1,0 +1,286 @@
+/**
+ * Announcement Context - Manage match announcement subscriptions and state tracking
+ */
+
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { generateAnnouncement, speakAnnouncement } from '../api/announcement.service';
+
+const AnnouncementContext = createContext();
+
+/**
+ * Custom hook to use announcement context
+ */
+export function useAnnouncements() {
+    const context = useContext(AnnouncementContext);
+    if (!context) {
+        throw new Error('useAnnouncements must be used within AnnouncementProvider');
+    }
+    return context;
+}
+
+/**
+ * Provider component for managing match announcements
+ */
+export function AnnouncementProvider({ children }) {
+    // Map of matchId -> { voiceEnabled: boolean, notificationEnabled: boolean, lastState: object }
+    const [subscriptions, setSubscriptions] = useState({});
+    const [matches, setMatches] = useState({}); // Current match states
+    const previousMatchesRef = useRef({});
+    const [currentNotification, setCurrentNotification] = useState(null);
+    const notificationTimeoutRef = useRef(null);
+
+    /**
+     * Show a notification
+     */
+    const showNotification = useCallback((matchId, match, message, type) => {
+        // Clear existing notification timeout
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+        }
+
+        const team1Names = getTeamNames(match.team1);
+        const team2Names = getTeamNames(match.team2);
+        const matchName = `${team1Names} vs ${team2Names}`;
+
+        setCurrentNotification({
+            matchId,
+            matchName,
+            message,
+            type
+        });
+    }, []);
+
+    /**
+     * Close notification
+     */
+    const closeNotification = useCallback(() => {
+        setCurrentNotification(null);
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+            notificationTimeoutRef.current = null;
+        }
+    }, []);
+
+    /**
+     * Get team names helper
+     */
+    const getTeamNames = (team) => {
+        if (!team?.player1) return '';
+        const cleanName = (name) => name ? name.replace(/\s*\(\d+\)\s*$/, '').trim() : '';
+        const player1Name = cleanName(team.player1.name);
+        const player2Name = team.player2 ? cleanName(team.player2.name) : '';
+        return player2Name ? `${player1Name} / ${player2Name}` : player1Name;
+    };
+
+    /**
+     * Toggle voice announcements for a specific match
+     */
+    const toggleVoiceAnnouncements = useCallback(async (matchId, match) => {
+        const isCurrentlyEnabled = subscriptions[matchId]?.voiceEnabled || false;
+        const newEnabled = !isCurrentlyEnabled;
+
+        if (newEnabled) {
+            // When enabling, check if match has ended or not started
+            const matchEnded = await handleInitialAnnouncement(match, true, false);
+            
+            if (matchEnded) {
+                // Don't enable announcements for finished matches
+                // Just announce and return without enabling
+                return;
+            }
+        }
+
+        setSubscriptions(prev => ({
+            ...prev,
+            [matchId]: {
+                ...prev[matchId],
+                voiceEnabled: newEnabled,
+                lastState: match
+            }
+        }));
+    }, [subscriptions]);
+
+    /**
+     * Toggle notifications for a specific match
+     */
+    const toggleNotifications = useCallback(async (matchId, match) => {
+        const isCurrentlyEnabled = subscriptions[matchId]?.notificationEnabled || false;
+        const newEnabled = !isCurrentlyEnabled;
+
+        if (newEnabled) {
+            // When enabling, check if match has ended or not started
+            const matchEnded = await handleInitialAnnouncement(match, false, true);
+            
+            if (matchEnded) {
+                // Don't enable for finished matches, just show notification
+                return;
+            }
+        }
+
+        setSubscriptions(prev => ({
+            ...prev,
+            [matchId]: {
+                ...prev[matchId],
+                notificationEnabled: newEnabled,
+                lastState: match
+            }
+        }));
+    }, [subscriptions]);
+
+    /**
+     * Handle initial announcement when user first enables notifications
+     * @returns {boolean} Whether the match has ended
+     */
+    const handleInitialAnnouncement = async (match) => {
+        const hasStarted = match.team1.points || match.team2.points || 
+                          match.team1.set1 !== undefined || match.team2.set1 !== undefined;
+        const hasEnded = match.team1.isWinner || match.team2.isWinner;
+
+        if (hasEnded) {
+            // Match has ended - announce final result
+            const announcement = await generateAnnouncement(match, 'MATCH_END');
+            speakAnnouncement(announcement, match);
+            return true; // Match has ended
+        } else if (!hasStarted) {
+            // Match hasn't started - announce it will begin
+            const announcement = await generateAnnouncement(match, 'MATCH_START');
+            speakAnnouncement(announcement, match);
+        }
+        // If match is ongoing, wait for next state change
+        return false;
+    };
+
+    /**
+     * Update match state - called from components when match data changes
+     */
+    const updateMatchState = useCallback((matchId, newMatchState) => {
+        setMatches(prev => {
+            const updated = { ...prev, [matchId]: newMatchState };
+            return updated;
+        });
+    }, []);
+
+    /**
+     * Detect and announce changes in match state
+     */
+    useEffect(() => {
+        Object.keys(matches).forEach(async matchId => {
+            const subscription = subscriptions[matchId];
+            if (!subscription || !subscription.enabled) return;
+
+            const currentMatch = matches[matchId];
+            const previousMatch = previousMatchesRef.current[matchId];
+
+            if (!previousMatch) {
+                // First time seeing this match in current session
+                previousMatchesRef.current[matchId] = currentMatch;
+                return;
+            }
+
+            // Detect changes and generate announcements
+            await detectAndAnnounceChanges(previousMatch, currentMatch);
+
+            // Update previous state
+            previousMatchesRef.current[matchId] = currentMatch;
+        });
+    }, [matches, subscriptions]);
+
+    /**
+     * Detect changes between match states and announce them
+     */
+    const detectAndAnnounceChanges = async (previous, current) => {
+        // Check if match just started
+        const wasNotStarted = !previous.team1.set1 && !previous.team2.set1;
+        const hasStarted = current.team1.set1 !== undefined || current.team2.set1 !== undefined;
+
+        if (wasNotStarted && hasStarted) {
+            const announcement = await generateAnnouncement(current, 'MATCH_START');
+            speakAnnouncement(announcement, current);
+            return;
+        }
+
+        // Check if match just ended
+        const wasOngoing = !previous.team1.isWinner && !previous.team2.isWinner;
+        const hasEnded = current.team1.isWinner || current.team2.isWinner;
+
+        if (wasOngoing && hasEnded) {
+            const announcement = await generateAnnouncement(current, 'MATCH_END');
+            speakAnnouncement(announcement, current);
+            return;
+        }
+
+        // Check for set changes (1, 2, or 3)
+        for (let setNum = 1; setNum <= 3; setNum++) {
+            const setKey = `set${setNum}`;
+            const prevSet1 = previous.team1[setKey];
+            const prevSet2 = previous.team2[setKey];
+            const currSet1 = current.team1[setKey];
+            const currSet2 = current.team2[setKey];
+
+            // Check if set just completed
+            const wasInProgress = (prevSet1 !== undefined && prevSet1 !== '') && 
+                                  (prevSet2 !== undefined && prevSet2 !== '') &&
+                                  prevSet1 < 6 && prevSet2 < 6;
+            const isComplete = (currSet1 >= 6 || currSet2 >= 6) && 
+                              Math.abs(currSet1 - currSet2) >= 2;
+
+            if (prevSet1 !== currSet1 || prevSet2 !== currSet2) {
+                // Check if we're in a tiebreak (6-6)
+                if (currSet1 === 6 && currSet2 === 6) {
+                    // Tiebreak - announce every point change
+                    const prevPoints1 = previous.team1.points;
+                    const prevPoints2 = previous.team2.points;
+                    const currPoints1 = current.team1.points;
+                    const currPoints2 = current.team2.points;
+
+                    if (prevPoints1 !== currPoints1 || prevPoints2 !== currPoints2) {
+                        const announcement = await generateAnnouncement(current, 'TIEBREAK_POINT');
+                        speakAnnouncement(announcement, current);
+                        return;
+                    }
+                } else if (prevSet1 !== currSet1 || prevSet2 !== currSet2) {
+                    // Game won within set
+                    const announcement = await generateAnnouncement(current, 'GAME_WON', previous);
+                    speakAnnouncement(announcement, current);
+                    
+                    // Check if this game win completed the set
+                    if (!wasInProgress && isComplete) {
+                        // Announce set win after a short delay
+                        setTimeout(async () => {
+                            const setAnnouncement = await generateAnnouncement(current, 'SET_WON', previous);
+                            speakAnnouncement(setAnnouncement, current);
+                        }, 3000);
+                    }
+                    return;
+                }
+            }
+        }
+    };
+
+    /**
+     * Check if announcements are enabled for a match
+     */
+    const isEnabled = useCallback((matchId) => {
+        return subscriptions[matchId]?.enabled || false;
+    }, [subscriptions]);
+
+    /**
+     * Get all enabled match IDs
+     */
+    const getEnabledMatches = useCallback(() => {
+        return Object.keys(subscriptions).filter(id => subscriptions[id]?.enabled);
+    }, [subscriptions]);
+
+    const value = useMemo(() => ({
+        toggleAnnouncements,
+        updateMatchState,
+        isEnabled,
+        getEnabledMatches
+    }), [toggleAnnouncements, updateMatchState, isEnabled, getEnabledMatches]);
+
+    return (
+        <AnnouncementContext.Provider value={value}>
+            {children}
+        </AnnouncementContext.Provider>
+    );
+}
