@@ -196,8 +196,18 @@ export function AnnouncementProvider({ children }) {
      * @returns {boolean} Whether the match has ended
      */
     const handleInitialAnnouncement = async (matchId, match, isVoice = true) => {
-        const hasStarted = match.team1.points || match.team2.points || 
-                          match.team1.set1 !== undefined || match.team2.set1 !== undefined;
+
+        // Consider match started only if points or set1/set2/set3 have a numeric value
+        function isSetStarted(set) {
+            return typeof set === 'number' && !isNaN(set);
+        }
+        const hasStarted =
+            (match.team1.points && match.team1.points !== '0') ||
+            (match.team2.points && match.team2.points !== '0') ||
+            isSetStarted(match.team1.set1) || isSetStarted(match.team2.set1) ||
+            isSetStarted(match.team1.set2) || isSetStarted(match.team2.set2) ||
+            isSetStarted(match.team1.set3) || isSetStarted(match.team2.set3);
+
         const hasEnded = match.team1.isWinner || match.team2.isWinner;
 
         if (hasEnded) {
@@ -210,8 +220,8 @@ export function AnnouncementProvider({ children }) {
             }
             return true; // Match has ended
         } else if (!hasStarted) {
-            // Match hasn't started - announce it will begin
-            const announcement = await generateAnnouncement(match, 'MATCH_START');
+            // Match hasn't started
+            const announcement = "I'll let you know when the game begins and then update you on the score.";
             if (isVoice) {
                 speakAnnouncement(announcement, match);
             } else {
