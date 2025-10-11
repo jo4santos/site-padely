@@ -1,10 +1,10 @@
 /**
  * API Service - Isolated layer for all API interactions
- * Base URL: http://fredericosilva.net:8081/
+ * Base URL: https://fredericosilva.net:8081/
  */
 
 const ApiService = (() => {
-    const BASE_URL = 'http://fredericosilva.net:8081';
+    const BASE_URL = 'https://fredericosilva.net:8081';
 
     // Use CORS proxy for local development to bypass CORS restrictions
     // Set to empty string when deploying to production if API adds CORS headers

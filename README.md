@@ -174,7 +174,7 @@ Tournaments are automatically categorized:
 
 ## API Integration
 
-The app uses the Padely API at `http://fredericosilva.net:8081/padely` with a CORS proxy for local development.
+The app uses the Padely API at `https://fredericosilva.net:8081/padely` with a CORS proxy for local development.
 
 Endpoints used:
 - `GET /padely/events` - List tournaments
