@@ -309,77 +309,67 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
     }
 }
 
+// Keep track of current audio
+let currentAudio = null;
+
 /**
- * Speak announcement using Web Speech API
+ * Speak announcement using OpenAI Text-to-Speech API
  * @param {string} text - Text to speak
  * @param {Object} match - Match object (kept for backward compatibility but not used)
  */
-export function speakAnnouncement(text, match = null) {
+export async function speakAnnouncement(text, match = null) {
     if (!text) return;
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    // Stop any currently playing audio
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
 
+    try {
+        // Generate speech using OpenAI TTS API
+        const response = await openai.audio.speech.create({
+            model: 'tts-1',
+            voice: 'alloy', // Options: alloy, echo, fable, onyx, nova, shimmer
+            input: text,
+            speed: 0.9 // Slightly slower for clarity
+        });
+
+        // Convert response to audio blob
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        // Create and play audio
+        currentAudio = new Audio(audioUrl);
+        currentAudio.play();
+
+        // Clean up URL when done
+        currentAudio.onended = () => {
+            URL.revokeObjectURL(audioUrl);
+            currentAudio = null;
+        };
+    } catch (error) {
+        console.error('Error generating speech with OpenAI TTS:', error);
+        // Fallback to browser speech synthesis
+        fallbackToWebSpeech(text);
+    }
+}
+
+/**
+ * Fallback to browser's Web Speech API if OpenAI TTS fails
+ */
+function fallbackToWebSpeech(text) {
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.85; // Slower rate for better clarity
+    utterance.rate = 0.85;
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
-
-    // Select the most natural-sounding English voice available
+    
     const voices = window.speechSynthesis.getVoices();
-    
-    // Priority order: Premium/Enhanced voices sound more natural
-    // 1. Google UK English Female (very natural)
-    // 2. Microsoft voices (good quality)
-    // 3. Apple enhanced voices (on macOS/iOS)
-    // 4. Any other English voice
-    const preferredVoices = [
-        'Google UK English Female',
-        'Google US English',
-        'Microsoft Zira',
-        'Microsoft David',
-        'Samantha',
-        'Karen',
-        'Daniel',
-        'Moira',
-        'Tessa'
-    ];
-    
-    let selectedVoice = null;
-    
-    // Try to find a preferred voice
-    for (const preferred of preferredVoices) {
-        selectedVoice = voices.find(voice => voice.name.includes(preferred));
-        if (selectedVoice) break;
-    }
-    
-    // Fallback: find any premium/enhanced English voice
-    if (!selectedVoice) {
-        selectedVoice = voices.find(voice => 
-            voice.lang.startsWith('en') && 
-            (voice.name.includes('Premium') || 
-             voice.name.includes('Enhanced') ||
-             voice.name.includes('Google') ||
-             voice.name.includes('Microsoft'))
-        );
-    }
-    
-    // Final fallback: any English voice
-    if (!selectedVoice) {
-        selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
-    }
-    
+    const selectedVoice = voices.find(voice => voice.lang.startsWith('en'));
     if (selectedVoice) {
         utterance.voice = selectedVoice;
     }
-
+    
     window.speechSynthesis.speak(utterance);
-}
-
-// Load voices when available
-if (typeof window !== 'undefined') {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-    };
 }

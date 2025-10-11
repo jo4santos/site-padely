@@ -334,7 +334,7 @@ function AppContent() {
                                     <ArrowBackIcon />
                                 </IconButton>
 
-                                <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: '40px', justifyContent: 'center' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: '40px', justifyContent: 'center', ml: 'auto', alignItems: 'flex-end' }}>
                                     <FormControlLabel
                                         control={
                                             <Switch
@@ -357,7 +357,7 @@ function AppContent() {
                                         sx={{ m: 0 }}
                                     />
                                     {autoRefresh && (
-                                        <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem', position: 'absolute', ml: 4.5, mt: 3.5 }}>
+                                        <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.7rem', mr: 0.5, mt: -0.5 }}>
                                             ... in {secondsUntilRefresh}s
                                         </Typography>
                                     )}
