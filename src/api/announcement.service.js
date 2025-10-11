@@ -19,6 +19,7 @@ const openai = new OpenAI({
 export async function generateAnnouncement(match, announcementType, previousState = null) {
     const team1Names = getTeamNames(match.team1);
     const team2Names = getTeamNames(match.team2);
+    const playerInfo = getPlayerInfo(match);
 
     let prompt = '';
 
@@ -53,7 +54,12 @@ export async function generateAnnouncement(match, announcementType, previousStat
             messages: [
                 {
                     role: 'system',
-                    content: 'You are a concise sports announcer. State only the facts: teams, scores, and who won. No commentary, no adjectives, no excitement. Just the information.'
+                    content: `You are a concise sports announcer. State only the facts: teams, scores, and who won. No commentary, no adjectives, no excitement. Just the information.
+
+Player pronunciation guide:
+${playerInfo}
+
+Use full names (not abbreviations) and pronounce them correctly based on their nationality. For Spanish names, use Spanish pronunciation. For Italian names, use Italian pronunciation, etc.`
                 },
                 {
                     role: 'user',
@@ -78,6 +84,48 @@ function cleanPlayerName(name) {
     if (!name) return '';
     // Remove ranking numbers in parentheses, e.g., "V. Virseda Sanchez (8)" -> "V. Virseda Sanchez"
     return name.replace(/\s*\(\d+\)\s*$/, '').trim();
+}
+
+/**
+ * Expand abbreviated first names to full names
+ * e.g., "V. Virseda Sanchez" -> "Virseda Sanchez" (keeping last name for clarity)
+ */
+function getFullName(name) {
+    if (!name) return '';
+    const cleaned = cleanPlayerName(name);
+    // If name starts with single letter + period, remove it to avoid abbreviation
+    // This helps TTS pronounce the last name correctly
+    return cleaned.replace(/^[A-Z]\.\s+/, '');
+}
+
+/**
+ * Get player information with countries for pronunciation guide
+ */
+function getPlayerInfo(match) {
+    const players = [];
+    
+    if (match.team1?.player1) {
+        const country = getCountryFromFlag(match.team1.player1.flag);
+        const name = getFullName(match.team1.player1.name);
+        players.push(`${name} (${country || 'International'})`);
+    }
+    if (match.team1?.player2) {
+        const country = getCountryFromFlag(match.team1.player2.flag);
+        const name = getFullName(match.team1.player2.name);
+        players.push(`${name} (${country || 'International'})`);
+    }
+    if (match.team2?.player1) {
+        const country = getCountryFromFlag(match.team2.player1.flag);
+        const name = getFullName(match.team2.player1.name);
+        players.push(`${name} (${country || 'International'})`);
+    }
+    if (match.team2?.player2) {
+        const country = getCountryFromFlag(match.team2.player2.flag);
+        const name = getFullName(match.team2.player2.name);
+        players.push(`${name} (${country || 'International'})`);
+    }
+    
+    return players.join(', ');
 }
 
 /**
@@ -158,13 +206,13 @@ function getMatchLanguage(match) {
 }
 
 /**
- * Get team names as a readable string
+ * Get team names as a readable string (using full names without abbreviations)
  */
 function getTeamNames(team) {
     if (!team?.player1) return '';
-    const player1Name = cleanPlayerName(team.player1.name);
-    const player2Name = team.player2 ? cleanPlayerName(team.player2.name) : '';
-    return player2Name ? `${player1Name} / ${player2Name}` : player1Name;
+    const player1Name = getFullName(team.player1.name);
+    const player2Name = team.player2 ? getFullName(team.player2.name) : '';
+    return player2Name ? `${player1Name} and ${player2Name}` : player1Name;
 }
 
 /**
