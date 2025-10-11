@@ -3,7 +3,8 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { generateAnnouncement, speakAnnouncement } from '../api/announcement.service';
+import { generateAnnouncement, speakAnnouncement, setPlayerNameTransformer } from '../api/announcement.service';
+import { usePlayerNames } from './PlayerNamesContext';
 
 const AnnouncementContext = createContext();
 
@@ -22,6 +23,14 @@ export function useAnnouncements() {
  * Provider component for managing match announcements
  */
 export function AnnouncementProvider({ children }) {
+    // Get player name transformer from context
+    const { transformPlayerName } = usePlayerNames();
+
+    // Set up the transformer in announcement service on mount
+    useEffect(() => {
+        setPlayerNameTransformer(transformPlayerName);
+    }, [transformPlayerName]);
+
     // Map of matchId -> { voiceEnabled: boolean, notificationEnabled: boolean, lastState: object }
     const [subscriptions, setSubscriptions] = useState({});
     const [matches, setMatches] = useState({}); // Current match states
@@ -106,15 +115,15 @@ export function AnnouncementProvider({ children }) {
     }, []);
 
     /**
-     * Get team names helper
+     * Get team names helper (using transformed player names)
      */
-    const getTeamNames = (team) => {
+    const getTeamNames = useCallback((team) => {
         if (!team?.player1) return '';
         const cleanName = (name) => name ? name.replace(/\s*\(\d+\)\s*$/, '').trim() : '';
-        const player1Name = cleanName(team.player1.name);
-        const player2Name = team.player2 ? cleanName(team.player2.name) : '';
+        const player1Name = transformPlayerName(cleanName(team.player1.name));
+        const player2Name = team.player2 ? transformPlayerName(cleanName(team.player2.name)) : '';
         return player2Name ? `${player1Name} / ${player2Name}` : player1Name;
-    };
+    }, [transformPlayerName]);
 
     /**
      * Toggle voice announcements for a specific match

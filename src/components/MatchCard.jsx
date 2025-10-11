@@ -26,6 +26,7 @@ import {
 import { getMatchStats } from '../api/api.service';
 import MatchStats from './MatchStats';
 import { useAnnouncements } from '../contexts/AnnouncementContext';
+import { usePlayerNames } from '../contexts/PlayerNamesContext';
 
 /**
  * Match Card Component using MUI
@@ -107,14 +108,15 @@ function getTimeRemaining(timeString) {
     }
 }
 
-function getTeamName(team) {
+function getTeamName(team, transformPlayerName) {
     if (!team || !team.player1) return '';
-    const player1Name = team.player1.name;
-    const player2Name = team.player2 ? team.player2.name : '';
+    const player1Name = transformPlayerName(team.player1.name);
+    const player2Name = team.player2 ? transformPlayerName(team.player2.name) : '';
     return player2Name ? `${player1Name} & ${player2Name}` : player1Name;
 }
 
 function Player({ player }) {
+    const { transformPlayerName } = usePlayerNames();
     if (!player) return null;
     return (
         <Stack direction="row" spacing={1} alignItems="center">
@@ -124,7 +126,7 @@ function Player({ player }) {
                 sx={{ width: 20, height: 20 }}
                 onError={(e) => e.target.style.display = 'none'}
             />
-            <Typography variant="body2">{player.name}</Typography>
+            <Typography variant="body2">{transformPlayerName(player.name)}</Typography>
         </Stack>
     );
 }
@@ -175,6 +177,7 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const { toggleVoiceAnnouncements, toggleNotifications, isVoiceEnabled, isNotificationEnabled, updateMatchState } = useAnnouncements();
+    const { transformPlayerName } = usePlayerNames();
 
     const ongoing = isMatchOngoing(match);
     const voiceEnabled = isVoiceEnabled(match.matchId);
@@ -218,8 +221,8 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
         }
     };
 
-    const team1Name = getTeamName(match.team1);
-    const team2Name = getTeamName(match.team2);
+    const team1Name = getTeamName(match.team1, transformPlayerName);
+    const team2Name = getTeamName(match.team2, transformPlayerName);
 
     return (
         <Card

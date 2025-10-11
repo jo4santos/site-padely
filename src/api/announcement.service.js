@@ -9,6 +9,45 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true // Required for client-side usage
 });
 
+// Global player name transformer function (will be set by context)
+let playerNameTransformer = null;
+
+/**
+ * Set the player name transformer function from context
+ * @param {Function} transformer - Function to transform player names
+ */
+export function setPlayerNameTransformer(transformer) {
+    playerNameTransformer = transformer;
+}
+
+/**
+ * Transform player name using the global transformer if available
+ */
+function transformName(name) {
+    if (playerNameTransformer) {
+        return playerNameTransformer(name);
+    }
+    return name;
+}
+
+/**
+ * Clean player name by removing ranking numbers and qualifiers like (8) or (Q)
+ */
+function cleanPlayerName(name) {
+    if (!name) return '';
+    // Remove rankings/qualifiers in parentheses, e.g., "V. Virseda Sanchez (8)" or "Player (Q)" -> "V. Virseda Sanchez" or "Player"
+    return name.replace(/\s*\([A-Z0-9]+\)\s*$/i, '').trim();
+}
+
+/**
+ * Get the display name for a player (transformed via user mappings)
+ */
+function getDisplayName(playerName) {
+    if (!playerName) return '';
+    // Transform using user mappings, which handles rankings automatically
+    return transformName(playerName);
+}
+
 /**
  * Generate announcement text based on match state
  * @param {Object} match - Match object
@@ -54,12 +93,21 @@ export async function generateAnnouncement(match, announcementType, previousStat
             messages: [
                 {
                     role: 'system',
-                    content: `You are a concise sports announcer. State only the facts: teams, scores, and who won. No commentary, no adjectives, no excitement. Just the information.
+                    content: `You are a concise sports announcer for professional padel. State only the facts: teams, scores, and who won. No commentary, no adjectives, no excitement. Just the information.
 
 Player pronunciation guide:
 ${playerInfo}
 
-Use full names (not abbreviations) and pronounce them correctly based on their nationality. For Spanish names, use Spanish pronunciation. For Italian names, use Italian pronunciation, etc.`
+CRITICAL FORMAT RULES:
+- ALWAYS use FULL names as provided (e.g., "Claudia Fernandez and Bea Gonzalez", NOT "Fernandez and Gonzalez")
+- ALWAYS use "and" between teammates (e.g., "Arturo Coello and Agustin Tapia")
+- NEVER use "/" or slashes between names
+- NEVER use last names only - always use the full name as provided in the player list
+- Use "defeated" for match results
+- Use "lead" or "leads" for in-progress scores
+- Use "won" for set results
+- Format example: "Claudia Fernandez and Bea Gonzalez defeated Alejandra Alonso and Claudia Jensen, 7-6, 6-3"
+- Keep announcements concise but always use full player names`
                 },
                 {
                     role: 'user',
@@ -67,10 +115,14 @@ Use full names (not abbreviations) and pronounce them correctly based on their n
                 }
             ],
             max_tokens: 50,
-            temperature: 0.3
+            temperature: 0.1
         });
 
-        return response.choices[0].message.content.trim();
+        let announcement = response.choices[0].message.content.trim();
+        
+        console.log('[Announcement Generated]:', announcement);
+        
+        return announcement;
     } catch (error) {
         console.error('Error generating announcement:', error);
         return getFallbackAnnouncement(announcementType, match, team1Names, team2Names, previousState);
@@ -78,50 +130,34 @@ Use full names (not abbreviations) and pronounce them correctly based on their n
 }
 
 /**
- * Clean player name by removing ranking numbers like (8)
- */
-function cleanPlayerName(name) {
-    if (!name) return '';
-    // Remove ranking numbers in parentheses, e.g., "V. Virseda Sanchez (8)" -> "V. Virseda Sanchez"
-    return name.replace(/\s*\(\d+\)\s*$/, '').trim();
-}
-
-/**
- * Expand abbreviated first names to full names
- * e.g., "V. Virseda Sanchez" -> "Virseda Sanchez" (keeping last name for clarity)
- */
-function getFullName(name) {
-    if (!name) return '';
-    const cleaned = cleanPlayerName(name);
-    // If name starts with single letter + period, remove it to avoid abbreviation
-    // This helps TTS pronounce the last name correctly
-    return cleaned.replace(/^[A-Z]\.\s+/, '');
-}
-
-/**
  * Get player information with countries for pronunciation guide
+ * Rankings are stripped before sending to OpenAI
  */
 function getPlayerInfo(match) {
     const players = [];
     
     if (match.team1?.player1) {
         const country = getCountryFromFlag(match.team1.player1.flag);
-        const name = getFullName(match.team1.player1.name);
+        const cleanedName = cleanPlayerName(match.team1.player1.name);
+        const name = transformName(cleanedName);
         players.push(`${name} (${country || 'International'})`);
     }
     if (match.team1?.player2) {
         const country = getCountryFromFlag(match.team1.player2.flag);
-        const name = getFullName(match.team1.player2.name);
+        const cleanedName = cleanPlayerName(match.team1.player2.name);
+        const name = transformName(cleanedName);
         players.push(`${name} (${country || 'International'})`);
     }
     if (match.team2?.player1) {
         const country = getCountryFromFlag(match.team2.player1.flag);
-        const name = getFullName(match.team2.player1.name);
+        const cleanedName = cleanPlayerName(match.team2.player1.name);
+        const name = transformName(cleanedName);
         players.push(`${name} (${country || 'International'})`);
     }
     if (match.team2?.player2) {
         const country = getCountryFromFlag(match.team2.player2.flag);
-        const name = getFullName(match.team2.player2.name);
+        const cleanedName = cleanPlayerName(match.team2.player2.name);
+        const name = transformName(cleanedName);
         players.push(`${name} (${country || 'International'})`);
     }
     
@@ -206,12 +242,13 @@ function getMatchLanguage(match) {
 }
 
 /**
- * Get team names as a readable string (using full names without abbreviations)
+ * Get team names as a readable string (using user-customized names, without rankings)
  */
 function getTeamNames(team) {
     if (!team?.player1) return '';
-    const player1Name = getFullName(team.player1.name);
-    const player2Name = team.player2 ? getFullName(team.player2.name) : '';
+    const cleanedName1 = cleanPlayerName(team.player1.name);
+    const player1Name = transformName(cleanedName1);
+    const player2Name = team.player2 ? transformName(cleanPlayerName(team.player2.name)) : '';
     return player2Name ? `${player1Name} and ${player2Name}` : player1Name;
 }
 

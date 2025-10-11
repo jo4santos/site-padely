@@ -7,7 +7,10 @@ import TournamentDetailPage from './pages/TournamentDetail';
 import RankingsPage from './pages/Rankings';
 import { AutoRefreshProvider, useAutoRefresh } from './contexts/AutoRefreshContext';
 import { AnnouncementProvider, useAnnouncements } from './contexts/AnnouncementContext';
+import { PlayerNamesProvider } from './contexts/PlayerNamesContext';
 import MatchNotification from './components/MatchNotification';
+import PlayerNameSettings from './components/PlayerNameSettings';
+import { useState } from 'react';
 
 // Create custom theme with vibrant padel colors and strong contrast
 const theme = createTheme({
@@ -164,9 +167,21 @@ function AppContent() {
     const navigate = useNavigate();
     const { autoRefresh, setAutoRefresh, secondsUntilRefresh } = useAutoRefresh();
     const { currentNotification, closeNotification } = useAnnouncements();
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [clickCount, setClickCount] = useState(0);
 
-    // Check if we're on a tournament detail page
     const isTournamentDetail = location.pathname.startsWith('/tournament/');
+
+    // Hidden feature: triple-click on logo to open settings
+    const handleLogoClick = () => {
+        setClickCount(prev => prev + 1);
+        setTimeout(() => setClickCount(0), 1000); // Reset after 1 second
+        
+        if (clickCount === 2) { // Third click (0, 1, 2)
+            setSettingsOpen(true);
+            setClickCount(0);
+        }
+    };
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -223,6 +238,7 @@ function AppContent() {
                                     component="img"
                                     src={`${import.meta.env.BASE_URL}favicon-32x32.png`}
                                     alt="Padely Logo"
+                                    onClick={handleLogoClick}
                                     sx={{
                                         width: 40,
                                         height: 40,
@@ -230,6 +246,7 @@ function AppContent() {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
+                                        cursor: 'pointer',
                                     }}
                                 />
                                 <Typography
@@ -381,6 +398,9 @@ function AppContent() {
                 notification={currentNotification}
                 onClose={closeNotification}
             />
+
+            {/* Player Name Settings - hidden feature (triple-click logo to open) */}
+            <PlayerNameSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </Box>
     );
 }
@@ -393,11 +413,13 @@ function App() {
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <BrowserRouter basename={basename}>
-                <AutoRefreshProvider>
-                    <AnnouncementProvider>
-                        <AppContent />
-                    </AnnouncementProvider>
-                </AutoRefreshProvider>
+                <PlayerNamesProvider>
+                    <AutoRefreshProvider>
+                        <AnnouncementProvider>
+                            <AppContent />
+                        </AnnouncementProvider>
+                    </AutoRefreshProvider>
+                </PlayerNamesProvider>
             </BrowserRouter>
         </ThemeProvider>
     );

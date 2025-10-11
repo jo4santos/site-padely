@@ -13,12 +13,14 @@ import {
 } from '@mui/material';
 import { getRankings } from '../api/api.service';
 import Filter from '../components/Filter';
+import { usePlayerNames } from '../contexts/PlayerNamesContext';
 
 /**
  * Rankings Page using MUI
  */
 
 function RankingCard({ player }) {
+    const { transformPlayerName } = usePlayerNames();
     return (
         <Card sx={{ mb: 2 }}>
             <CardContent>
@@ -36,7 +38,7 @@ function RankingCard({ player }) {
 
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" fontWeight="bold">
-                            {player.name}
+                            {transformPlayerName(player.name)}
                         </Typography>
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Avatar
