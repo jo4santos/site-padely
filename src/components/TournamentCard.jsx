@@ -79,11 +79,21 @@ export default function TournamentCard({ tournament }) {
 
     const open = Boolean(anchorEl);
 
+    // Create URL-friendly slug from tournament name
+    const createSlug = (name) => {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/-+/g, '-') // Replace multiple hyphens with single
+            .trim();
+    };
+
     return (
         <>
             <Card
                 component={Link}
-                to={`/tournament/${tournament.id}`}
+                to={`/tournament/${createSlug(tournament.name)}`}
                 sx={{
                     textDecoration: 'none',
                     display: 'flex',

@@ -214,6 +214,11 @@ export default function TournamentsPage() {
         }))
     ];
 
+    // Count active filters
+    const activeFiltersCount = 
+        (typeFilter.length > 0 && !typeFilter.includes('all') ? typeFilter.length : 0) +
+        (monthFilter !== 'all' ? 1 : 0);
+
     return (
         <Container maxWidth="lg" sx={{ py: 3 }}>
             {/* Search and Filters */}
@@ -247,13 +252,14 @@ export default function TournamentsPage() {
                         endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
                         onClick={() => setShowFilters(!showFilters)}
                         sx={{
-                            minWidth: 120,
+                            minWidth: 140,
                             borderRadius: 2,
                             textTransform: 'none',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                         }}
                     >
-                        Filters
+                        Filters{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
                     </Button>
                 </Stack>
 

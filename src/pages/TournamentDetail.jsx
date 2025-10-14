@@ -9,7 +9,8 @@ import {
     TextField,
     Button,
     Collapse,
-    Popover
+    Popover,
+    Badge
 } from '@mui/material';
 import { FilterList, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { getTournaments, getEventMatches } from '../api/api.service';
@@ -17,6 +18,7 @@ import { MatchList } from '../components/MatchCard';
 import Filter from '../components/Filter';
 import Tabs from '../components/Tabs';
 import { useAutoRefresh } from '../contexts/AutoRefreshContext';
+import { usePlayerNames } from '../contexts/PlayerNamesContext';
 
 /**
  * Tournament Detail Page using MUI
@@ -76,7 +78,7 @@ function calculateDaysWithDates(startDate, endDate) {
 }
 
 export default function TournamentDetailPage() {
-    const { id } = useParams();
+    const { name } = useParams();
     const [tournament, setTournament] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -85,9 +87,11 @@ export default function TournamentDetailPage() {
     const [allMatches, setAllMatches] = useState([]);
     const [matchesLoading, setMatchesLoading] = useState(false);
     const { autoRefresh, setSecondsUntilRefresh } = useAutoRefresh();
+    const { transformPlayerName } = usePlayerNames();
     const intervalRef = useRef(null);
     const [playerSearch, setPlayerSearch] = useState('');
-    const [courtFilter, setCourtFilter] = useState('all');
+    const [courtFilter, setCourtFilter] = useState(['all']);
+    const [countryFilter, setCountryFilter] = useState(['all']);
     const [showFilters, setShowFilters] = useState(false);
     const [imageAnchorEl, setImageAnchorEl] = useState(null);
 
@@ -101,12 +105,22 @@ export default function TournamentDetailPage() {
 
     const imagePopoverOpen = Boolean(imageAnchorEl);
 
+    // Create URL-friendly slug from tournament name
+    const createSlug = (tournamentName) => {
+        return tournamentName
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/-+/g, '-') // Replace multiple hyphens with single
+            .trim();
+    };
+
     // Load tournament info
     useEffect(() => {
         async function loadTournament() {
             try {
                 const tournaments = await getTournaments();
-                const found = tournaments.find(t => t.id === id);
+                const found = tournaments.find(t => createSlug(t.name) === name);
 
                 if (!found) {
                     setError('Tournament not found.');
@@ -129,7 +143,7 @@ export default function TournamentDetailPage() {
         }
 
         loadTournament();
-    }, [id]);
+    }, [name]);
 
     // Load matches for current day
     useEffect(() => {
@@ -219,11 +233,43 @@ export default function TournamentDetailPage() {
 
     const daysInfo = calculateDaysWithDates(tournament.startDate, tournament.endDate);
 
+    // Helper function to extract country code from flag URL
+    const getCountryCode = (flagUrl) => {
+        if (!flagUrl) return null;
+        const match = flagUrl.match(/\/([A-Z]{2,3})\.jpg$/i);
+        return match ? match[1].toUpperCase() : null;
+    };
+
     // Get unique courts from all matches
     const uniqueCourts = [...new Set(allMatches.map(m => m.courtName))].sort();
     const courtFilters = [
         { label: 'All Courts', value: 'all' },
         ...uniqueCourts.map(court => ({ label: court, value: court }))
+    ];
+
+    // Get unique countries from all players
+    const countriesMap = new Map();
+    allMatches.forEach(match => {
+        [match.team1?.player1, match.team1?.player2, match.team2?.player1, match.team2?.player2]
+            .filter(player => player?.flag)
+            .forEach(player => {
+                const country = getCountryCode(player.flag);
+                if (country && !countriesMap.has(country)) {
+                    countriesMap.set(country, player.flag);
+                }
+            });
+    });
+    const uniqueCountries = Array.from(countriesMap.entries())
+        .map(([code, flag]) => ({ code, flag }))
+        .sort((a, b) => a.code.localeCompare(b.code));
+    
+    const countryFilters = [
+        { label: 'All Countries', value: 'all' },
+        ...uniqueCountries.map(({ code, flag }) => ({ 
+            label: code, 
+            value: code,
+            flag: flag
+        }))
     ];
 
     // Filter matches by gender, player, and court
@@ -246,10 +292,10 @@ export default function TournamentDetailPage() {
     if (playerSearch) {
         filteredMatches = filteredMatches.filter(match => {
             const searchLower = playerSearch.toLowerCase();
-            const team1Player1 = match.team1?.player1?.name?.toLowerCase() || '';
-            const team1Player2 = match.team1?.player2?.name?.toLowerCase() || '';
-            const team2Player1 = match.team2?.player1?.name?.toLowerCase() || '';
-            const team2Player2 = match.team2?.player2?.name?.toLowerCase() || '';
+            const team1Player1 = transformPlayerName(match.team1?.player1?.name || '').toLowerCase();
+            const team1Player2 = transformPlayerName(match.team1?.player2?.name || '').toLowerCase();
+            const team2Player1 = transformPlayerName(match.team2?.player1?.name || '').toLowerCase();
+            const team2Player2 = transformPlayerName(match.team2?.player2?.name || '').toLowerCase();
 
             return team1Player1.includes(searchLower) ||
                    team1Player2.includes(searchLower) ||
@@ -259,8 +305,25 @@ export default function TournamentDetailPage() {
     }
 
     // Court filter
-    if (courtFilter !== 'all') {
-        filteredMatches = filteredMatches.filter(match => match.courtName === courtFilter);
+    if (!courtFilter.includes('all')) {
+        filteredMatches = filteredMatches.filter(match => courtFilter.includes(match.courtName));
+    }
+
+    // Country filter
+    if (!countryFilter.includes('all')) {
+        filteredMatches = filteredMatches.filter(match => {
+            const players = [
+                match.team1?.player1,
+                match.team1?.player2,
+                match.team2?.player1,
+                match.team2?.player2
+            ].filter(p => p?.flag);
+            
+            return players.some(player => {
+                const country = getCountryCode(player.flag);
+                return countryFilter.includes(country);
+            });
+        });
     }
 
     const genderFilters = [
@@ -268,6 +331,12 @@ export default function TournamentDetailPage() {
         { label: 'Men', value: 'men' },
         { label: 'Women', value: 'women' }
     ];
+
+    // Count active filters
+    const activeFiltersCount = 
+        (currentGender !== 'all' ? 1 : 0) +
+        (courtFilter.length > 0 && !courtFilter.includes('all') ? courtFilter.length : 0) +
+        (countryFilter.length > 0 && !countryFilter.includes('all') ? countryFilter.length : 0);
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -443,13 +512,14 @@ export default function TournamentDetailPage() {
                         endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
                         onClick={() => setShowFilters(!showFilters)}
                         sx={{
-                            minWidth: 120,
+                            minWidth: 140,
                             borderRadius: 2,
                             textTransform: 'none',
                             fontWeight: 600,
+                            whiteSpace: 'nowrap',
                         }}
                     >
-                        Filters
+                        Filters{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
                     </Button>
                 </Stack>
 
@@ -504,6 +574,29 @@ export default function TournamentDetailPage() {
                                     filters={courtFilters}
                                     activeFilter={courtFilter}
                                     onChange={setCourtFilter}
+                                    multiSelect={true}
+                                />
+                            </Box>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography
+                                    variant="caption"
+                                    sx={{
+                                        fontWeight: 600,
+                                        color: '#64748B',
+                                        mb: 1,
+                                        display: 'block',
+                                        textTransform: 'uppercase',
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '0.05em',
+                                    }}
+                                >
+                                    Player Country
+                                </Typography>
+                                <Filter
+                                    filters={countryFilters}
+                                    activeFilter={countryFilter}
+                                    onChange={setCountryFilter}
+                                    multiSelect={true}
                                 />
                             </Box>
                         </Stack>
@@ -527,6 +620,7 @@ export default function TournamentDetailPage() {
                         matches={filteredMatches}
                         eventId={tournament.eventId}
                         isToday={daysInfo.find(d => d.value === currentDay)?.isToday || false}
+                        searchQuery={playerSearch}
                     />
                 )}
             </Box>

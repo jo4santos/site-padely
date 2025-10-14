@@ -388,7 +388,7 @@ function AppContent() {
             <Box component="main" sx={{ flexGrow: 1 }}>
                 <Routes>
                     <Route path="/" element={<TournamentsPage />} />
-                    <Route path="/tournament/:id" element={<TournamentDetailPage />} />
+                    <Route path="/tournament/:name" element={<TournamentDetailPage />} />
                     <Route path="/rankings" element={<RankingsPage />} />
                 </Routes>
             </Box>

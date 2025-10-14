@@ -115,23 +115,54 @@ function getTeamName(team, transformPlayerName) {
     return player2Name ? `${player1Name} & ${player2Name}` : player1Name;
 }
 
-function Player({ player }) {
+function Player({ player, searchQuery = '' }) {
     const { transformPlayerName } = usePlayerNames();
     if (!player) return null;
+    
+    const displayName = transformPlayerName(player.name);
+    
+    // Function to highlight matching text
+    const highlightText = (text, highlight) => {
+        if (!highlight.trim()) {
+            return <span>{text}</span>;
+        }
+        
+        const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+        return (
+            <span>
+                {parts.map((part, index) => 
+                    part.toLowerCase() === highlight.toLowerCase() ? (
+                        <span key={index} style={{ backgroundColor: '#CCFF00', fontWeight: 'bold' }}>
+                            {part}
+                        </span>
+                    ) : (
+                        <span key={index}>{part}</span>
+                    )
+                )}
+            </span>
+        );
+    };
+    
     return (
         <Stack direction="row" spacing={1} alignItems="center">
-            <Avatar
+            <Box
+                component="img"
                 src={player.flag}
                 alt="Flag"
-                sx={{ width: 20, height: 20 }}
+                sx={{ 
+                    width: '20px', 
+                    height: '16px',
+                    borderRadius: '2px',
+                    objectFit: 'cover'
+                }}
                 onError={(e) => e.target.style.display = 'none'}
             />
-            <Typography variant="body2">{transformPlayerName(player.name)}</Typography>
+            <Typography variant="body2">{highlightText(displayName, searchQuery)}</Typography>
         </Stack>
     );
 }
 
-function Team({ team }) {
+function Team({ team, searchQuery = '' }) {
     const hasCurrentPoints = team.points && team.points.trim() !== '';
 
     return (
@@ -147,8 +178,8 @@ function Team({ team }) {
             }}
         >
             <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Player player={team.player1} />
-                <Player player={team.player2} />
+                <Player player={team.player1} searchQuery={searchQuery} />
+                <Player player={team.player2} searchQuery={searchQuery} />
             </Box>
             {hasCurrentPoints && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -171,7 +202,7 @@ function Team({ team }) {
     );
 }
 
-export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false, showFollowedBy = false }) {
+export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false, showFollowedBy = false, searchQuery = '' }) {
     const [showStats, setShowStats] = useState(false);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -329,8 +360,8 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                 </Stack>
 
                 <Box>
-                    <Team team={match.team1} />
-                    <Team team={match.team2} />
+                    <Team team={match.team1} searchQuery={searchQuery} />
+                    <Team team={match.team2} searchQuery={searchQuery} />
                 </Box>
 
                 <Collapse in={showStats}>
@@ -364,7 +395,7 @@ function groupMatchesByCourt(matches) {
     return grouped;
 }
 
-export function MatchList({ matches, eventId, isToday = false }) {
+export function MatchList({ matches, eventId, isToday = false, searchQuery = '' }) {
     if (!matches || matches.length === 0) {
         return <Typography>No matches scheduled for this day.</Typography>;
     }
@@ -416,6 +447,7 @@ export function MatchList({ matches, eventId, isToday = false }) {
                     isFirstOngoing={false}
                     isToday={isToday}
                     showFollowedBy={shouldShowFollowedBy(match)}
+                    searchQuery={searchQuery}
                 />
             ))}
         </Box>

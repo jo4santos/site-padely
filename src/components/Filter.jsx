@@ -1,8 +1,9 @@
-import { ToggleButtonGroup, ToggleButton } from '@mui/material';
+import { ToggleButtonGroup, ToggleButton, Avatar, Stack } from '@mui/material';
 
 /**
  * Filter Component using MUI
  * Supports both single-select (exclusive) and multi-select modes
+ * Can display flag icons when flag URLs are provided in filter objects
  */
 
 export default function Filter({ filters, activeFilter, onChange, multiSelect = false }) {
@@ -75,7 +76,19 @@ export default function Filter({ filters, activeFilter, onChange, multiSelect = 
         >
             {filters.map(filter => (
                 <ToggleButton key={filter.value} value={filter.value}>
-                    {filter.label}
+                    {filter.flag ? (
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Avatar
+                                src={filter.flag}
+                                alt={filter.label}
+                                sx={{ width: 20, height: 20 }}
+                                onError={(e) => e.target.style.display = 'none'}
+                            />
+                            <span>{filter.label}</span>
+                        </Stack>
+                    ) : (
+                        filter.label
+                    )}
                 </ToggleButton>
             ))}
         </ToggleButtonGroup>
