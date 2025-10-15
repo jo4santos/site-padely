@@ -32,9 +32,60 @@ import { usePlayerNames } from '../contexts/PlayerNamesContext';
  * Match Card Component using MUI
  */
 
-function isMatchOngoing(match) {
-    return (match.team1.isServing || match.team2.isServing) ||
+function isMatchOngoing(match, allMatchesOnCourt = null) {
+    // Standard ongoing check: serving or has points
+    const standardOngoing = (match.team1.isServing || match.team2.isServing) ||
            (match.team1.points && match.team1.points !== '' && !match.team1.isWinner && !match.team2.isWinner);
+    
+    if (standardOngoing) return true;
+    
+    // Court-based logic: if no start date (or start time passed), no score/winner, and previous match on court has ended
+    if (allMatchesOnCourt && allMatchesOnCourt.length > 0) {
+        // Helper to check if a set value indicates no score
+        const isNoScore = (val) => {
+            return !val || val === '' || val === '-' || val === 0 || val === '0';
+        };
+        
+        // Check if match has no score or winner
+        const hasNoScore = isNoScore(match.team1.set1) && isNoScore(match.team2.set1) && 
+                          isNoScore(match.team1.set2) && isNoScore(match.team2.set2) && 
+                          isNoScore(match.team1.set3) && isNoScore(match.team2.set3);
+        const hasNoWinner = !match.team1.isWinner && !match.team2.isWinner;
+        
+        if (hasNoScore && hasNoWinner) {
+            // Check if start time has passed or there's no start time
+            const hasNoStartDate = !match.startDate || match.startDate.trim() === '';
+            let startTimePassed = false;
+            
+            if (!hasNoStartDate) {
+                // Check if the scheduled start time has passed
+                const matchDate = parseMatchTime(match.startDate);
+                if (matchDate && !isNaN(matchDate.getTime())) {
+                    const now = new Date();
+                    // Consider time passed if we're within 5 minutes or past it
+                    startTimePassed = (matchDate - now) <= 5 * 60 * 1000;
+                }
+            }
+            
+            // Only proceed if there's no start date OR the start time has passed
+            if (hasNoStartDate || startTimePassed) {
+                // Find the index of current match
+                const currentIndex = allMatchesOnCourt.findIndex(m => m.matchId === match.matchId);
+                
+                if (currentIndex > 0) {
+                    // Check if previous match has ended
+                    const previousMatch = allMatchesOnCourt[currentIndex - 1];
+                    const previousHasEnded = previousMatch.team1.isWinner || previousMatch.team2.isWinner;
+                    
+                    if (previousHasEnded) {
+                        return true; // This match should be considered ongoing
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
 }
 
 function parseMatchTime(timeString) {
@@ -162,8 +213,21 @@ function Player({ player, searchQuery = '' }) {
     );
 }
 
-function Team({ team, searchQuery = '' }) {
+function Team({ team, searchQuery = '', match = null }) {
     const hasCurrentPoints = team.points && team.points.trim() !== '';
+
+    // Check if match has a winner but no valid numeric scores (walkover/not played)
+    const isNumericScore = (val) => {
+        return val !== undefined && val !== null && val !== '' && val !== '-' && !isNaN(Number(val));
+    };
+    
+    const hasWinner = match && (match.team1.isWinner || match.team2.isWinner);
+    const hasNoValidScore = match && 
+        !isNumericScore(match.team1.set1) && !isNumericScore(match.team2.set1) &&
+        !isNumericScore(match.team1.set2) && !isNumericScore(match.team2.set2) &&
+        !isNumericScore(match.team1.set3) && !isNumericScore(match.team2.set3);
+    
+    const showNotPlayed = hasWinner && hasNoValidScore && !team.isWinner;
 
     return (
         <Box
@@ -177,9 +241,16 @@ function Team({ team, searchQuery = '' }) {
                 fontWeight: team.isWinner ? 'bold' : 'normal'
             }}
         >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Player player={team.player1} searchQuery={searchQuery} />
-                <Player player={team.player2} searchQuery={searchQuery} />
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Player player={team.player1} searchQuery={searchQuery} />
+                    <Player player={team.player2} searchQuery={searchQuery} />
+                </Box>
+                {showNotPlayed && (
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                        Walkover
+                    </Typography>
+                )}
             </Box>
             {hasCurrentPoints && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -202,7 +273,7 @@ function Team({ team, searchQuery = '' }) {
     );
 }
 
-export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false, showFollowedBy = false, searchQuery = '' }) {
+export default function MatchCard({ match, eventId, isFirstOngoing = false, isToday = false, showFollowedBy = false, searchQuery = '', courtMatches = null }) {
     const [showStats, setShowStats] = useState(false);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -210,7 +281,7 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
     const { toggleVoiceAnnouncements, toggleNotifications, isVoiceEnabled, isNotificationEnabled, updateMatchState } = useAnnouncements();
     const { transformPlayerName } = usePlayerNames();
 
-    const ongoing = isMatchOngoing(match);
+    const ongoing = isMatchOngoing(match, courtMatches);
     const voiceEnabled = isVoiceEnabled(match.matchId);
     const notificationEnabled = isNotificationEnabled(match.matchId);
 
@@ -290,11 +361,12 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                                     {formatLocalTime(match.startDate)}
                                 </Typography>
                             )}
-                            {showFollowedBy || !match.startDate ? (
+                            {!ongoing && !match.team1.isWinner && !match.team2.isWinner && (showFollowedBy || !match.startDate) && (
                                 <Typography variant="caption" color="warning.main" fontWeight="bold">
                                     {match.startDate ? '• ' : ''}Followed by
                                 </Typography>
-                            ) : isToday && !ongoing && getTimeRemaining(match.startDate) && (
+                            )}
+                            {isToday && !ongoing && !match.team1.isWinner && !match.team2.isWinner && getTimeRemaining(match.startDate) && (
                                 <Typography variant="caption" color="primary.main" fontWeight="bold">
                                     • {getTimeRemaining(match.startDate)}
                                 </Typography>
@@ -362,8 +434,8 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                 </Stack>
 
                 <Box>
-                    <Team team={match.team1} searchQuery={searchQuery} />
-                    <Team team={match.team2} searchQuery={searchQuery} />
+                    <Team team={match.team1} searchQuery={searchQuery} match={match} />
+                    <Team team={match.team2} searchQuery={searchQuery} match={match} />
                 </Box>
 
                 <Collapse in={showStats}>
@@ -402,13 +474,24 @@ export function MatchList({ matches, eventId, isToday = false, searchQuery = '' 
         return <Typography>No matches scheduled for this day.</Typography>;
     }
 
-    // Separate ongoing and other matches
-    const ongoingMatches = matches.filter(m => isMatchOngoing(m));
-    const otherMatches = matches.filter(m => !isMatchOngoing(m));
+    // Group matches by court first to provide context
+    const matchesByCourt = groupMatchesByCourt(matches);
+    
+    // Build a map of matchId to its court matches for context
+    const matchCourtContext = {};
+    Object.entries(matchesByCourt).forEach(([courtName, courtMatches]) => {
+        courtMatches.forEach(match => {
+            matchCourtContext[match.matchId] = courtMatches;
+        });
+    });
+
+    // Separate ongoing and other matches with court context
+    const ongoingMatches = matches.filter(m => isMatchOngoing(m, matchCourtContext[m.matchId]));
+    const otherMatches = matches.filter(m => !isMatchOngoing(m, matchCourtContext[m.matchId]));
 
     // Check if match should show "Followed by"
     const shouldShowFollowedBy = (match) => {
-        if (!isToday || isMatchOngoing(match)) return false;
+        if (!isToday || isMatchOngoing(match, matchCourtContext[match.matchId])) return false;
 
         // Don't show "Followed by" if match is already completed
         if (match.team1.isWinner || match.team2.isWinner) return false;
@@ -425,7 +508,7 @@ export function MatchList({ matches, eventId, isToday = false, searchQuery = '' 
         return diff < -5 * 60 * 1000;
     };
 
-    const renderMatchGrid = (matchesToRender) => (
+    const renderMatchGrid = (matchesToRender, courtMatchesForContext) => (
         <Box
             sx={{
                 display: 'grid',
@@ -450,6 +533,7 @@ export function MatchList({ matches, eventId, isToday = false, searchQuery = '' 
                     isToday={isToday}
                     showFollowedBy={shouldShowFollowedBy(match)}
                     searchQuery={searchQuery}
+                    courtMatches={courtMatchesForContext}
                 />
             ))}
         </Box>
@@ -477,7 +561,7 @@ export function MatchList({ matches, eventId, isToday = false, searchQuery = '' 
                                     {courtName}
                                 </Typography>
                             </Divider>
-                            {renderMatchGrid(courtMatches)}
+                            {renderMatchGrid(courtMatches, matchesByCourt[courtName])}
                         </Box>
                     ))}
                 </Box>
@@ -505,7 +589,7 @@ export function MatchList({ matches, eventId, isToday = false, searchQuery = '' 
                                     {courtName}
                                 </Typography>
                             </Divider>
-                            {renderMatchGrid(courtMatches)}
+                            {renderMatchGrid(courtMatches, matchesByCourt[courtName])}
                         </Box>
                     ))}
                 </Box>
