@@ -285,12 +285,14 @@ export default function MatchCard({ match, eventId, isFirstOngoing = false, isTo
                     </Box>
                     <Stack direction="row" spacing={1} alignItems="center">
                         <Stack direction="row" spacing={0.5} alignItems="center">
-                            <Typography variant="body2" color="text.secondary">
-                                {formatLocalTime(match.startDate)}
-                            </Typography>
-                            {showFollowedBy ? (
+                            {match.startDate && (
+                                <Typography variant="body2" color="text.secondary">
+                                    {formatLocalTime(match.startDate)}
+                                </Typography>
+                            )}
+                            {showFollowedBy || !match.startDate ? (
                                 <Typography variant="caption" color="warning.main" fontWeight="bold">
-                                    • Followed by
+                                    {match.startDate ? '• ' : ''}Followed by
                                 </Typography>
                             ) : isToday && !ongoing && getTimeRemaining(match.startDate) && (
                                 <Typography variant="caption" color="primary.main" fontWeight="bold">
