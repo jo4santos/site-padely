@@ -301,12 +301,18 @@ function generateMatchEndPrompt(match, team1Names, team2Names) {
     const loser = match.team1.isWinner ? team2Names : team1Names;
     const isTeam1Winner = match.team1.isWinner;
     
+    // Helper to check if a set has a meaningful score
+    const hasScore = (score) => {
+        return score !== undefined && score !== '' && score !== 0 && score !== '0';
+    };
+    
     // Build score from winner's perspective (winner's score first)
     const sets = [];
     for (let i = 1; i <= 3; i++) {
         const team1Score = match.team1[`set${i}`];
         const team2Score = match.team2[`set${i}`];
-        if (team1Score !== undefined && team1Score !== '') {
+        // Only include sets where at least one team has a non-zero score
+        if (hasScore(team1Score) || hasScore(team2Score)) {
             // Put winner's score first in each set
             if (isTeam1Winner) {
                 sets.push(`${team1Score}-${team2Score}`);
@@ -322,10 +328,21 @@ function generateMatchEndPrompt(match, team1Names, team2Names) {
 
 /**
  * Get current set number
+ * Only counts sets that have actual scores (not 0, undefined, or empty)
  */
 function getCurrentSet(match) {
-    if (match.team1.set3 !== undefined && match.team1.set3 !== '') return 3;
-    if (match.team1.set2 !== undefined && match.team1.set2 !== '') return 2;
+    // Helper to check if a set has a meaningful score
+    const hasScore = (score) => {
+        return score !== undefined && score !== '' && score !== 0 && score !== '0';
+    };
+    
+    // Check if set 3 has any meaningful score
+    if (hasScore(match.team1.set3) || hasScore(match.team2.set3)) return 3;
+    
+    // Check if set 2 has any meaningful score
+    if (hasScore(match.team1.set2) || hasScore(match.team2.set2)) return 2;
+    
+    // Default to set 1
     return 1;
 }
 
@@ -371,12 +388,18 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
             const loser = match.team1.isWinner ? team2Names : team1Names;
             const isTeam1Winner = match.team1.isWinner;
             
+            // Helper to check if a set has a meaningful score
+            const hasScore = (score) => {
+                return score !== undefined && score !== '' && score !== 0 && score !== '0';
+            };
+            
             // Build score from winner's perspective (winner's score first)
             const sets = [];
             for (let i = 1; i <= 3; i++) {
                 const team1Score = match.team1[`set${i}`];
                 const team2Score = match.team2[`set${i}`];
-                if (team1Score !== undefined && team1Score !== '') {
+                // Only include sets where at least one team has a non-zero score
+                if (hasScore(team1Score) || hasScore(team2Score)) {
                     // Put winner's score first in each set
                     if (isTeam1Winner) {
                         sets.push(`${team1Score}-${team2Score}`);
