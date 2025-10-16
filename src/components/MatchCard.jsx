@@ -168,7 +168,17 @@ function getTeamName(team, transformPlayerName) {
 
 function Player({ player, searchQuery = '' }) {
     const { transformPlayerName } = usePlayerNames();
-    if (!player) return null;
+    
+    // Check if player is not defined
+    if (!player || !player.name || player.name.trim() === '') {
+        return (
+            <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                    TBD
+                </Typography>
+            </Stack>
+        );
+    }
     
     const displayName = transformPlayerName(player.name);
     
