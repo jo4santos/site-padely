@@ -49,6 +49,32 @@ function getDisplayName(playerName) {
 }
 
 /**
+ * Get serving information from match state
+ * @param {Object} match - Match object
+ * @returns {string} Serving information or empty string
+ */
+function getServingInfo(match) {
+    // Check which team is currently serving
+    if (match.team1?.isServing) {
+        const team1Names = getTeamNames(match.team1);
+        return ` ${team1Names} to serve.`;
+    } else if (match.team2?.isServing) {
+        const team2Names = getTeamNames(match.team2);
+        return ` ${team2Names} to serve.`;
+    }
+    
+    // If no team is currently serving, try to determine next server
+    // In ongoing matches, the non-serving team will serve next
+    if (!match.team1?.isServing && !match.team2?.isServing) {
+        // For completed games/sets, the serving typically alternates
+        // Since we can't determine exactly, we'll leave it blank for now
+        return '';
+    }
+    
+    return '';
+}
+
+/**
  * Generate announcement text based on match state
  * @param {Object} match - Match object
  * @param {string} announcementType - Type of announcement
@@ -93,7 +119,7 @@ export async function generateAnnouncement(match, announcementType, previousStat
             messages: [
                 {
                     role: 'system',
-                    content: `You are a concise sports announcer for professional padel. State only the facts: teams, scores, and who won. No commentary, no adjectives, no excitement. Just the information.
+                    content: `You are a concise sports announcer for professional padel. State only the facts: teams, scores, who won, and serving information. No commentary, no adjectives, no excitement. Just the information.
 
 Player pronunciation guide:
 ${playerInfo}
@@ -106,15 +132,16 @@ CRITICAL FORMAT RULES:
 - Use "defeated" for match results
 - Use "lead" or "leads" for in-progress scores
 - Use "won" for set results
-- Format example: "Claudia Fernandez and Bea Gonzalez defeated Alejandra Alonso and Claudia Jensen, 7-6, 6-3"
-- Keep announcements concise but always use full player names`
+- INCLUDE serving information when provided (e.g., "Team Name to serve")
+- Format example: "Claudia Fernandez and Bea Gonzalez lead 3-2, set 1. Maria Garcia and Ana Lopez to serve."
+- Keep announcements concise but always use full player names and include serving information`
                 },
                 {
                     role: 'user',
                     content: prompt
                 }
             ],
-            max_tokens: 50,
+            max_tokens: 60,
             temperature: 0.1
         });
 
@@ -264,12 +291,14 @@ function generateGameWonPrompt(match, team1Names, team2Names, previousState) {
     const games1 = (team1Games === '-' || team1Games === undefined) ? 0 : parseInt(team1Games) || 0;
     const games2 = (team2Games === '-' || team2Games === undefined) ? 0 : parseInt(team2Games) || 0;
 
+    const servingInfo = getServingInfo(match);
+
     if (games1 === games2) {
-        return `State that the score in set ${currentSet} is ${games1} all. Maximum 8 words.`;
+        return `State that the score in set ${currentSet} is ${games1} all.${servingInfo} Maximum 12 words.`;
     } else if (games1 > games2) {
-        return `State that ${team1Names} lead ${games1}-${games2} in set ${currentSet}. Maximum 10 words.`;
+        return `State that ${team1Names} lead ${games1}-${games2} in set ${currentSet}.${servingInfo} Maximum 15 words.`;
     } else {
-        return `State that ${team2Names} lead ${games2}-${games1} in set ${currentSet}. Maximum 10 words.`;
+        return `State that ${team2Names} lead ${games2}-${games1} in set ${currentSet}.${servingInfo} Maximum 15 words.`;
     }
 }
 
@@ -331,8 +360,9 @@ function generateSetWonPrompt(match, team1Names, team2Names, previousState) {
 
     const winner = team1Score > team2Score ? team1Names : team2Names;
     const score = team1Score > team2Score ? `${team1Score}-${team2Score}` : `${team2Score}-${team1Score}`;
+    const servingInfo = getServingInfo(match);
 
-    return `State that ${winner} won set ${setNumber}, ${score}. Maximum 8 words.`;
+    return `State that ${winner} won set ${setNumber}, ${score}.${servingInfo} Maximum 12 words.`;
 }
 
 /**
@@ -478,12 +508,14 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
             const games1 = (team1Games === '-' || team1Games === undefined) ? 0 : parseInt(team1Games) || 0;
             const games2 = (team2Games === '-' || team2Games === undefined) ? 0 : parseInt(team2Games) || 0;
 
+            const servingInfo = getServingInfo(match);
+
             if (games1 === games2) {
-                return `${games1} all, set ${currentSet}`;
+                return `${games1} all, set ${currentSet}${servingInfo}`;
             } else if (games1 > games2) {
-                return `${team1Names} lead ${games1}-${games2}, set ${currentSet}`;
+                return `${team1Names} lead ${games1}-${games2}, set ${currentSet}${servingInfo}`;
             } else {
-                return `${team2Names} lead ${games2}-${games1}, set ${currentSet}`;
+                return `${team2Names} lead ${games2}-${games1}, set ${currentSet}${servingInfo}`;
             }
         }
 
@@ -535,7 +567,8 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
 
             const winner = team1Score > team2Score ? team1Names : team2Names;
             const score = team1Score > team2Score ? `${team1Score}-${team2Score}` : `${team2Score}-${team1Score}`;
-            return `${winner} win set ${setNumber}, ${score}`;
+            const servingInfo = getServingInfo(match);
+            return `${winner} win set ${setNumber}, ${score}${servingInfo}`;
         }
 
         case 'TIEBREAK_POINT': {

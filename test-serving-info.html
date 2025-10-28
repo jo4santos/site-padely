@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serving Information Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .match-info {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .expected {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .result {
+            color: #0066cc;
+            font-weight: bold;
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .serving-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Serving Information Test</h1>
+    <p>Testing serving information inclusion in announcements:</p>
+    
+    <div id="tests"></div>
+
+    <script>
+        // Copy the serving logic for testing
+        function getDisplayName(name) {
+            return name || '';
+        }
+
+        function cleanPlayerName(name) {
+            if (!name) return '';
+            return name.replace(/\s*\([A-Z0-9]+\)\s*$/i, '').trim();
+        }
+
+        function getTeamNames(team) {
+            if (!team?.player1) return '';
+            const player1Name = getDisplayName(cleanPlayerName(team.player1.name));
+            const player2Name = team.player2 ? getDisplayName(cleanPlayerName(team.player2.name)) : '';
+            return player2Name ? `${player1Name} / ${player2Name}` : player1Name;
+        }
+
+        function getServingInfo(match) {
+            if (match.team1?.isServing) {
+                const team1Names = getTeamNames(match.team1);
+                return ` ${team1Names} to serve.`;
+            } else if (match.team2?.isServing) {
+                const team2Names = getTeamNames(match.team2);
+                return ` ${team2Names} to serve.`;
+            }
+            return '';
+        }
+
+        function generateGameWonAnnouncement(match) {
+            const team1Names = getTeamNames(match.team1);
+            const team2Names = getTeamNames(match.team2);
+            
+            // Simplified logic for testing
+            const currentSet = 2; // Assume set 2 for examples
+            const games1 = parseInt(match.team1.set2) || 0;
+            const games2 = parseInt(match.team2.set2) || 0;
+            const servingInfo = getServingInfo(match);
+
+            if (games1 === games2) {
+                return `${games1} all, set ${currentSet}${servingInfo}`;
+            } else if (games1 > games2) {
+                return `${team1Names} lead ${games1}-${games2}, set ${currentSet}${servingInfo}`;
+            } else {
+                return `${team2Names} lead ${games2}-${games1}, set ${currentSet}${servingInfo}`;
+            }
+        }
+
+        function generateSetWonAnnouncement(match, setNumber = 2) {
+            const team1Names = getTeamNames(match.team1);
+            const team2Names = getTeamNames(match.team2);
+            const team1Score = parseInt(match.team1[`set${setNumber}`]) || 0;
+            const team2Score = parseInt(match.team2[`set${setNumber}`]) || 0;
+            const servingInfo = getServingInfo(match);
+
+            const winner = team1Score > team2Score ? team1Names : team2Names;
+            const score = team1Score > team2Score ? `${team1Score}-${team2Score}` : `${team2Score}-${team1Score}`;
+
+            return `${winner} win set ${setNumber}, ${score}${servingInfo}`;
+        }
+
+        const testCases = [
+            {
+                name: "Team 1 leads, Team 1 serving",
+                match: {
+                    team1: { 
+                        set1: 6, set2: 2, set3: '-', 
+                        isServing: true,
+                        player1: { name: "Player 1" },
+                        player2: { name: "Player 2" }
+                    },
+                    team2: { 
+                        set1: 4, set2: 1, set3: '-', 
+                        isServing: false,
+                        player1: { name: "Player 3" },
+                        player2: { name: "Player 4" }
+                    }
+                },
+                type: "GAME_WON",
+                expected: "Player 1 / Player 2 lead 2-1, set 2. Player 1 / Player 2 to serve."
+            },
+            {
+                name: "Set won, Team 2 serving next",
+                match: {
+                    team1: { 
+                        set1: 6, set2: 6, set3: '-', 
+                        isServing: false,
+                        player1: { name: "Player 1" },
+                        player2: { name: "Player 2" }
+                    },
+                    team2: { 
+                        set1: 4, set2: 4, set3: '-', 
+                        isServing: true,
+                        player1: { name: "Player 3" },
+                        player2: { name: "Player 4" }
+                    }
+                },
+                type: "SET_WON",
+                expected: "Player 1 / Player 2 win set 2, 6-4. Player 3 / Player 4 to serve."
+            },
+            {
+                name: "Tied games, Team 2 serving",
+                match: {
+                    team1: { 
+                        set1: 6, set2: 3, set3: '-', 
+                        isServing: false,
+                        player1: { name: "Alice" },
+                        player2: { name: "Bob" }
+                    },
+                    team2: { 
+                        set1: 3, set2: 3, set3: '-', 
+                        isServing: true,
+                        player1: { name: "Charlie" },
+                        player2: { name: "Diana" }
+                    }
+                },
+                type: "GAME_WON",
+                expected: "3 all, set 2. Charlie / Diana to serve."
+            },
+            {
+                name: "No serving info (both teams false)",
+                match: {
+                    team1: { 
+                        set1: 6, set2: 1, set3: '-', 
+                        isServing: false,
+                        player1: { name: "Player 1" },
+                        player2: { name: "Player 2" }
+                    },
+                    team2: { 
+                        set1: 4, set2: 2, set3: '-', 
+                        isServing: false,
+                        player1: { name: "Player 3" },
+                        player2: { name: "Player 4" }
+                    }
+                },
+                type: "GAME_WON",
+                expected: "Player 3 / Player 4 lead 2-1, set 2."
+            }
+        ];
+
+        function runTests() {
+            const testsDiv = document.getElementById('tests');
+            
+            testCases.forEach((testCase, index) => {
+                let result = '';
+                
+                if (testCase.type === 'GAME_WON') {
+                    result = generateGameWonAnnouncement(testCase.match);
+                } else if (testCase.type === 'SET_WON') {
+                    result = generateSetWonAnnouncement(testCase.match);
+                }
+                
+                const servingInfo = getServingInfo(testCase.match);
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.name}</h3>
+                    <div class="match-info">
+                        <strong>Match State:</strong><br>
+                        Team 1: ${JSON.stringify(testCase.match.team1, null, 2)}<br>
+                        Team 2: ${JSON.stringify(testCase.match.team2, null, 2)}
+                    </div>
+                    <div class="serving-info">
+                        <strong>Serving Info:</strong> ${servingInfo || 'None'}
+                    </div>
+                    <div class="expected">Expected: ${testCase.expected}</div>
+                    <div class="result">Result: ${result}</div>
+                `;
+                
+                testsDiv.appendChild(testDiv);
+            });
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
