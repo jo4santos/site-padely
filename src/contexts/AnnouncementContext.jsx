@@ -235,8 +235,6 @@ export function AnnouncementProvider({ children }) {
      * @returns {boolean} Whether the match has ended
      */
     const handleInitialAnnouncement = async (matchId, match, isVoice = true) => {
-        console.log('[handleInitialAnnouncement] Match state:', match);
-
         // Helper to check if a score is a valid number (not "-", undefined, empty, or 0)
         const hasValidScore = (score) => {
             return score !== undefined && 
@@ -274,14 +272,6 @@ export function AnnouncementProvider({ children }) {
         // Match has started if any set has valid scores
         const hasStarted = set1Started || set2Started || set3Started;
         const hasEnded = match.team1.isWinner || match.team2.isWinner;
-
-        console.log('[handleInitialAnnouncement] Analysis:', {
-            set1: { started: set1Started, complete: set1Complete },
-            set2: { started: set2Started, complete: set2Complete },
-            set3: { started: set3Started },
-            hasStarted,
-            hasEnded
-        });
 
         if (hasEnded) {
             // Match has ended - announce final result
@@ -371,11 +361,33 @@ export function AnnouncementProvider({ children }) {
     const detectAndAnnounceChanges = async (matchId, previous, current, subscription) => {
         const { voiceEnabled, notificationEnabled } = subscription;
 
-        // Check if match just started
-        const wasNotStarted = !previous.team1.set1 && !previous.team2.set1;
-        const hasStarted = current.team1.set1 !== undefined || current.team2.set1 !== undefined;
+        // Helper to check if a score is a valid number (not "-", undefined, empty)
+        const hasValidScore = (score) => {
+            return score !== undefined && 
+                   score !== '' && 
+                   score !== '-' && 
+                   !isNaN(parseInt(score));
+        };
 
-        if (wasNotStarted && hasStarted) {
+        // Helper to check if a set is completed
+        const isSetComplete = (team1Score, team2Score) => {
+            if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+                return false;
+            }
+            
+            const score1 = parseInt(team1Score);
+            const score2 = parseInt(team2Score);
+            
+            return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+                   (score1 === 7 && score2 === 6) || 
+                   (score1 === 6 && score2 === 7);
+        };
+
+        // Check if match just started (transition from no valid scores to having valid scores)
+        const previousHasValidScores = hasValidScore(previous.team1.set1) && hasValidScore(previous.team2.set1);
+        const currentHasValidScores = hasValidScore(current.team1.set1) && hasValidScore(current.team2.set1);
+        
+        if (!previousHasValidScores && currentHasValidScores) {
             const announcement = await generateAnnouncement(current, 'MATCH_START');
             if (voiceEnabled) {
                 speakAnnouncement(announcement, current);
@@ -412,25 +424,29 @@ export function AnnouncementProvider({ children }) {
             return;
         }
 
-        // Check for set changes (1, 2, or 3)
+        // Check for changes in each set
         for (let setNum = 1; setNum <= 3; setNum++) {
             const setKey = `set${setNum}`;
-            const prevSet1 = previous.team1[setKey];
-            const prevSet2 = previous.team2[setKey];
-            const currSet1 = current.team1[setKey];
-            const currSet2 = current.team2[setKey];
+            const prevTeam1Score = previous.team1[setKey];
+            const prevTeam2Score = previous.team2[setKey];
+            const currTeam1Score = current.team1[setKey];
+            const currTeam2Score = current.team2[setKey];
 
-            // Check if set just completed
-            const wasInProgress = (prevSet1 !== undefined && prevSet1 !== '') && 
-                                  (prevSet2 !== undefined && prevSet2 !== '') &&
-                                  prevSet1 < 6 && prevSet2 < 6;
-            const isComplete = (currSet1 >= 6 || currSet2 >= 6) && 
-                              Math.abs(currSet1 - currSet2) >= 2;
+            // Skip if both previous and current are invalid (like "-" or undefined)
+            const prevBothValid = hasValidScore(prevTeam1Score) && hasValidScore(prevTeam2Score);
+            const currBothValid = hasValidScore(currTeam1Score) && hasValidScore(currTeam2Score);
+            
+            if (!prevBothValid && !currBothValid) {
+                continue; // No meaningful change in this set
+            }
 
-            if (prevSet1 !== currSet1 || prevSet2 !== currSet2) {
+            // Check for score changes in this set
+            const scoreChanged = (prevTeam1Score !== currTeam1Score) || (prevTeam2Score !== currTeam2Score);
+            
+            if (scoreChanged) {
                 // Check if we're in a tiebreak (6-6)
-                if (currSet1 === 6 && currSet2 === 6) {
-                    // Tiebreak - announce every point change
+                if (currBothValid && parseInt(currTeam1Score) === 6 && parseInt(currTeam2Score) === 6) {
+                    // In tiebreak - check for point changes
                     const prevPoints1 = previous.team1.points;
                     const prevPoints2 = previous.team2.points;
                     const currPoints1 = current.team1.points;
@@ -444,10 +460,28 @@ export function AnnouncementProvider({ children }) {
                         if (notificationEnabled) {
                             showNotification(matchId, current, announcement, 'TIEBREAK_POINT');
                         }
-                        return;
                     }
-                } else if (prevSet1 !== currSet1 || prevSet2 !== currSet2) {
-                    // Game won within set
+                    return; // Don't process further if in tiebreak
+                }
+
+                // Check if a set was just completed
+                const wasComplete = prevBothValid && isSetComplete(prevTeam1Score, prevTeam2Score);
+                const isComplete = currBothValid && isSetComplete(currTeam1Score, currTeam2Score);
+                
+                if (!wasComplete && isComplete) {
+                    // Set just completed - announce set win
+                    const announcement = await generateAnnouncement(current, 'SET_WON');
+                    if (voiceEnabled) {
+                        speakAnnouncement(announcement, current);
+                    }
+                    if (notificationEnabled) {
+                        showNotification(matchId, current, announcement, 'SET_WON');
+                    }
+                    return;
+                }
+
+                // Regular game won within set
+                if (currBothValid) {
                     const announcement = await generateAnnouncement(current, 'GAME_WON', previous);
                     if (voiceEnabled) {
                         speakAnnouncement(announcement, current);
@@ -455,21 +489,7 @@ export function AnnouncementProvider({ children }) {
                     if (notificationEnabled) {
                         showNotification(matchId, current, announcement, 'GAME_WON');
                     }
-                    
-                    // Check if this game win completed the set
-                    if (!wasInProgress && isComplete) {
-                        // Announce set win after a short delay
-                        setTimeout(async () => {
-                            const setAnnouncement = await generateAnnouncement(current, 'SET_WON', previous);
-                            if (voiceEnabled) {
-                                speakAnnouncement(setAnnouncement, current);
-                            }
-                            if (notificationEnabled) {
-                                showNotification(matchId, current, setAnnouncement, 'SET_WON');
-                            }
-                        }, 3000);
-                    }
-                    return;
+                    return; // Only announce one change at a time
                 }
             }
         }

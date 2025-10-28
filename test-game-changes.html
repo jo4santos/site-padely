@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Change Detection Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .state {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            display: inline-block;
+            min-width: 200px;
+        }
+        .arrow {
+            font-size: 20px;
+            margin: 0 10px;
+            color: #0066cc;
+        }
+        .expected {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .detection {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .no-change {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Game Change Detection Test</h1>
+    <p>Testing detection of game wins within sets:</p>
+    
+    <div id="tests"></div>
+
+    <script>
+        // Copy the detection logic for testing
+        function hasValidScore(score) {
+            return score !== undefined && 
+                   score !== '' && 
+                   score !== '-' && 
+                   !isNaN(parseInt(score));
+        }
+
+        function isSetComplete(team1Score, team2Score) {
+            if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+                return false;
+            }
+            
+            const score1 = parseInt(team1Score);
+            const score2 = parseInt(team2Score);
+            
+            return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+                   (score1 === 7 && score2 === 6) || 
+                   (score1 === 6 && score2 === 7);
+        }
+
+        function detectChanges(previous, current) {
+            const changes = [];
+
+            // Check if match just started
+            const previousHasValidScores = hasValidScore(previous.team1.set1) && hasValidScore(previous.team2.set1);
+            const currentHasValidScores = hasValidScore(current.team1.set1) && hasValidScore(current.team2.set1);
+            
+            if (!previousHasValidScores && currentHasValidScores) {
+                changes.push("MATCH_START");
+                return changes;
+            }
+
+            // Check if match ended
+            const wasOngoing = !previous.team1.isWinner && !previous.team2.isWinner;
+            const hasEnded = current.team1.isWinner || current.team2.isWinner;
+
+            if (wasOngoing && hasEnded) {
+                changes.push("MATCH_END");
+                return changes;
+            }
+
+            // Check for changes in each set
+            for (let setNum = 1; setNum <= 3; setNum++) {
+                const setKey = `set${setNum}`;
+                const prevTeam1Score = previous.team1[setKey];
+                const prevTeam2Score = previous.team2[setKey];
+                const currTeam1Score = current.team1[setKey];
+                const currTeam2Score = current.team2[setKey];
+
+                const prevBothValid = hasValidScore(prevTeam1Score) && hasValidScore(prevTeam2Score);
+                const currBothValid = hasValidScore(currTeam1Score) && hasValidScore(currTeam2Score);
+                
+                if (!prevBothValid && !currBothValid) {
+                    continue;
+                }
+
+                const scoreChanged = (prevTeam1Score !== currTeam1Score) || (prevTeam2Score !== currTeam2Score);
+                
+                if (scoreChanged) {
+                    // Check tiebreak
+                    if (currBothValid && parseInt(currTeam1Score) === 6 && parseInt(currTeam2Score) === 6) {
+                        changes.push(`TIEBREAK_SET${setNum}`);
+                        return changes;
+                    }
+
+                    // Check set completion
+                    const wasComplete = prevBothValid && isSetComplete(prevTeam1Score, prevTeam2Score);
+                    const isComplete = currBothValid && isSetComplete(currTeam1Score, currTeam2Score);
+                    
+                    if (!wasComplete && isComplete) {
+                        changes.push(`SET${setNum}_WON`);
+                        return changes;
+                    }
+
+                    // Regular game won
+                    if (currBothValid) {
+                        changes.push(`GAME_WON_SET${setNum}`);
+                        return changes;
+                    }
+                }
+            }
+
+            return changes;
+        }
+
+        const testCases = [
+            {
+                name: "Your Example: 6-4 1-1 → 6-4 2-1",
+                previous: {
+                    team1: { set1: 6, set2: 1, set3: '-', isWinner: false },
+                    team2: { set1: 4, set2: 1, set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 6, set2: 2, set3: '-', isWinner: false },
+                    team2: { set1: 4, set2: 1, set3: '-', isWinner: false }
+                },
+                expected: "GAME_WON_SET2 (Team 1 leads 2-1, set 2)"
+            },
+            {
+                name: "Game won in set 1: 3-2 → 4-2",
+                previous: {
+                    team1: { set1: 3, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 2, set2: '-', set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 4, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 2, set2: '-', set3: '-', isWinner: false }
+                },
+                expected: "GAME_WON_SET1 (Team 1 leads 4-2, set 1)"
+            },
+            {
+                name: "Set completion: 5-4 → 6-4",
+                previous: {
+                    team1: { set1: 5, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 4, set2: '-', set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 6, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 4, set2: '-', set3: '-', isWinner: false }
+                },
+                expected: "SET1_WON (Team 1 wins set 1, 6-4)"
+            },
+            {
+                name: "Match start: - - → 1-0",
+                previous: {
+                    team1: { set1: '-', set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: '-', set2: '-', set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 1, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 0, set2: '-', set3: '-', isWinner: false }
+                },
+                expected: "MATCH_START"
+            },
+            {
+                name: "Tiebreak: 5-6 → 6-6",
+                previous: {
+                    team1: { set1: 5, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 6, set2: '-', set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 6, set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: 6, set2: '-', set3: '-', isWinner: false }
+                },
+                expected: "TIEBREAK_SET1"
+            },
+            {
+                name: "No change: same scores",
+                previous: {
+                    team1: { set1: 3, set2: 1, set3: '-', isWinner: false },
+                    team2: { set1: 2, set2: 2, set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 3, set2: 1, set3: '-', isWinner: false },
+                    team2: { set1: 2, set2: 2, set3: '-', isWinner: false }
+                },
+                expected: "No changes"
+            },
+            {
+                name: "Second set game: 6-3 2-1 → 6-3 2-2",
+                previous: {
+                    team1: { set1: 6, set2: 2, set3: '-', isWinner: false },
+                    team2: { set1: 3, set2: 1, set3: '-', isWinner: false }
+                },
+                current: {
+                    team1: { set1: 6, set2: 2, set3: '-', isWinner: false },
+                    team2: { set1: 3, set2: 2, set3: '-', isWinner: false }
+                },
+                expected: "GAME_WON_SET2 (2 all, set 2)"
+            }
+        ];
+
+        function runTests() {
+            const testsDiv = document.getElementById('tests');
+            
+            testCases.forEach((testCase, index) => {
+                const changes = detectChanges(testCase.previous, testCase.current);
+                const detected = changes.length > 0 ? changes[0] : "No changes";
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                
+                const formatState = (state) => {
+                    return `${state.team1.set1}-${state.team2.set1} ${state.team1.set2}-${state.team2.set2} ${state.team1.set3}-${state.team2.set3}`;
+                };
+                
+                const hasChanges = changes.length > 0;
+                const detectionClass = hasChanges ? 'detection' : 'no-change';
+                
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.name}</h3>
+                    <div>
+                        <span class="state">Previous: ${formatState(testCase.previous)}</span>
+                        <span class="arrow">→</span>
+                        <span class="state">Current: ${formatState(testCase.current)}</span>
+                    </div>
+                    <div class="expected">Expected: ${testCase.expected}</div>
+                    <div class="${detectionClass}">
+                        <strong>Detected:</strong> ${detected}
+                        ${hasChanges ? ' ✅' : ' ❌'}
+                    </div>
+                `;
+                
+                testsDiv.appendChild(testDiv);
+            });
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
