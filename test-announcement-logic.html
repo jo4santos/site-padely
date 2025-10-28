@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Announcement Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .match-info {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .expected {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .actual {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .correct {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Match Announcement Test</h1>
+    <p>Testing the announcement logic with your specific examples:</p>
+    
+    <div id="tests"></div>
+
+    <script>
+        // Copy the announcement logic for testing
+
+        function hasValidScore(score) {
+            return score !== undefined && 
+                   score !== '' && 
+                   score !== '-' && 
+                   score !== 0 && 
+                   score !== '0' &&
+                   !isNaN(parseInt(score));
+        }
+
+        function isSetComplete(team1Score, team2Score) {
+            if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+                return false;
+            }
+            
+            const score1 = parseInt(team1Score);
+            const score2 = parseInt(team2Score);
+            
+            return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+                   (score1 === 7 && score2 === 6) || 
+                   (score1 === 6 && score2 === 7);
+        }
+
+        function getCurrentSet(match) {
+            const set1Team1 = match.team1.set1;
+            const set1Team2 = match.team2.set1;
+            const set1HasScore = hasValidScore(set1Team1) && hasValidScore(set1Team2);
+            const set1Complete = set1HasScore && isSetComplete(set1Team1, set1Team2);
+            
+            const set2Team1 = match.team1.set2;
+            const set2Team2 = match.team2.set2;
+            const set2HasScore = hasValidScore(set2Team1) && hasValidScore(set2Team2);
+            const set2Complete = set2HasScore && isSetComplete(set2Team1, set2Team2);
+            
+            const set3Team1 = match.team1.set3;
+            const set3Team2 = match.team2.set3;
+            const set3HasScore = hasValidScore(set3Team1) && hasValidScore(set3Team2);
+            
+            if (set3HasScore) return 3;
+            if (set2Complete) return 3;
+            if (set2HasScore) return 2;
+            if (set1Complete) return 2;
+            return 1;
+        }
+
+        function analyzeMatch(match) {
+            const set1Started = hasValidScore(match.team1.set1) && hasValidScore(match.team2.set1);
+            const set1Complete = set1Started && isSetComplete(match.team1.set1, match.team2.set1);
+            
+            const set2Started = hasValidScore(match.team1.set2) && hasValidScore(match.team2.set2);
+            const set2Complete = set2Started && isSetComplete(match.team1.set2, match.team2.set2);
+            
+            const set3Started = hasValidScore(match.team1.set3) && hasValidScore(match.team2.set3);
+
+            const hasStarted = set1Started || set2Started || set3Started;
+            const hasEnded = match.team1.isWinner || match.team2.isWinner;
+
+            let recommendation = '';
+            
+            if (hasEnded) {
+                recommendation = 'Match ended - announce final result';
+            } else if (!hasStarted) {
+                recommendation = "Match hasn't started - say 'I'll let you know when the game begins'";
+            } else if (set2Complete && !set3Started) {
+                recommendation = `Set 2 completed (${match.team1.set2}-${match.team2.set2}) - announce set win`;
+            } else if (set1Complete && !set2Started) {
+                recommendation = `Set 1 completed (${match.team1.set1}-${match.team2.set1}) - announce set win`;
+            } else {
+                const currentSet = getCurrentSet(match);
+                const team1Games = match.team1[`set${currentSet}`];
+                const team2Games = match.team2[`set${currentSet}`];
+                const games1 = (team1Games === '-' || team1Games === undefined) ? 0 : parseInt(team1Games) || 0;
+                const games2 = (team2Games === '-' || team2Games === undefined) ? 0 : parseInt(team2Games) || 0;
+                
+                if (games1 === games2) {
+                    recommendation = `Set ${currentSet} ongoing - announce "${games1} all, set ${currentSet}"`;
+                } else {
+                    const leader = games1 > games2 ? 'Team 1' : 'Team 2';
+                    const leadScore = Math.max(games1, games2);
+                    const trailScore = Math.min(games1, games2);
+                    recommendation = `Set ${currentSet} ongoing - announce "${leader} leads ${leadScore}-${trailScore}, set ${currentSet}"`;
+                }
+            }
+
+            return {
+                hasStarted,
+                hasEnded,
+                set1: { started: set1Started, complete: set1Complete },
+                set2: { started: set2Started, complete: set2Complete },
+                set3: { started: set3Started },
+                currentSet: getCurrentSet(match),
+                recommendation
+            };
+        }
+
+        const testCases = [
+            {
+                name: "Match 1: Your Example",
+                match: {
+                    team1: { set1: 1, set2: '-', set3: '-', points: '40', isWinner: false },
+                    team2: { set1: 0, set2: '-', set3: '-', points: '40', isWinner: false }
+                },
+                score: "40-40 1 0 - - - -",
+                expected: "Team 1 leads 1-0, set 1",
+                problem: "Currently says: 'We'll let you know when the match begins'"
+            },
+            {
+                name: "Match 2: Your Example", 
+                match: {
+                    team1: { set1: 6, set2: 2, set3: '-', points: '15', isWinner: false },
+                    team2: { set1: 3, set2: 4, set3: '-', points: '0', isWinner: false }
+                },
+                score: "15-0 6 3 2 4 - -",
+                expected: "Team 2 wins set 2, 4-2",
+                problem: "Currently says: 'Set 3 is tied, all'"
+            },
+            {
+                name: "Test Case: Set 1 Complete",
+                match: {
+                    team1: { set1: 6, set2: 0, set3: '-', isWinner: false },
+                    team2: { set1: 3, set2: 0, set3: '-', isWinner: false }
+                },
+                score: "0-0 6 3 0 0 - -",
+                expected: "Team 1 wins set 1, 6-3"
+            },
+            {
+                name: "Test Case: Match Not Started",
+                match: {
+                    team1: { set1: '-', set2: '-', set3: '-', isWinner: false },
+                    team2: { set1: '-', set2: '-', set3: '-', isWinner: false }
+                },
+                score: "0-0 - - - - - -",
+                expected: "I'll let you know when the game begins"
+            },
+            {
+                name: "Test Case: Set 2 Complete", 
+                match: {
+                    team1: { set1: 6, set2: 6, set3: 1, isWinner: false },
+                    team2: { set1: 4, set2: 4, set3: 0, isWinner: false }
+                },
+                score: "0-0 6 4 6 4 1 0",
+                expected: "Team 1 wins set 2, 6-4"
+            }
+        ];
+
+        function runTests() {
+            const testsDiv = document.getElementById('tests');
+            
+            testCases.forEach((testCase, index) => {
+                const analysis = analyzeMatch(testCase.match);
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                
+                const isExpectedCase = testCase.expected;
+                const matchesExpected = isExpectedCase && analysis.recommendation.includes(testCase.expected.substring(0, 10));
+                
+                if (matchesExpected) {
+                    testDiv.classList.add('correct');
+                } else if (isExpectedCase) {
+                    testDiv.classList.add('incorrect');
+                }
+                
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.name}</h3>
+                    <div class="match-info">
+                        <strong>Score:</strong> ${testCase.score}<br>
+                        <strong>Match Object:</strong> ${JSON.stringify(testCase.match, null, 2)}
+                    </div>
+                    <div class="expected">Expected: ${testCase.expected || 'N/A'}</div>
+                    <div class="actual">Analysis: ${analysis.recommendation}</div>
+                    ${testCase.problem ? `<div class="error">Problem: ${testCase.problem}</div>` : ''}
+                    <details>
+                        <summary>Debug Info</summary>
+                        <pre>${JSON.stringify(analysis, null, 2)}</pre>
+                    </details>
+                `;
+                
+                testsDiv.appendChild(testDiv);
+            });
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

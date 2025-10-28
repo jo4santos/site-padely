@@ -235,19 +235,53 @@ export function AnnouncementProvider({ children }) {
      * @returns {boolean} Whether the match has ended
      */
     const handleInitialAnnouncement = async (matchId, match, isVoice = true) => {
+        console.log('[handleInitialAnnouncement] Match state:', match);
 
-        // Consider match started only if points or set1/set2/set3 have a numeric value
-        function isSetStarted(set) {
-            return typeof set === 'number' && !isNaN(set);
-        }
-        const hasStarted =
-            (match.team1.points && match.team1.points !== '0') ||
-            (match.team2.points && match.team2.points !== '0') ||
-            isSetStarted(match.team1.set1) || isSetStarted(match.team2.set1) ||
-            isSetStarted(match.team1.set2) || isSetStarted(match.team2.set2) ||
-            isSetStarted(match.team1.set3) || isSetStarted(match.team2.set3);
+        // Helper to check if a score is a valid number (not "-", undefined, empty, or 0)
+        const hasValidScore = (score) => {
+            return score !== undefined && 
+                   score !== '' && 
+                   score !== '-' && 
+                   score !== 0 && 
+                   score !== '0' &&
+                   !isNaN(parseInt(score));
+        };
 
+        // Helper to check if a set is completed
+        const isSetComplete = (team1Score, team2Score) => {
+            if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+                return false;
+            }
+            
+            const score1 = parseInt(team1Score);
+            const score2 = parseInt(team2Score);
+            
+            // Set is complete if one team has 6+ and leads by 2+, or it's 7-6/6-7
+            return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+                   (score1 === 7 && score2 === 6) || 
+                   (score1 === 6 && score2 === 7);
+        };
+
+        // Check which sets have started and which are complete
+        const set1Started = hasValidScore(match.team1.set1) && hasValidScore(match.team2.set1);
+        const set1Complete = set1Started && isSetComplete(match.team1.set1, match.team2.set1);
+        
+        const set2Started = hasValidScore(match.team1.set2) && hasValidScore(match.team2.set2);
+        const set2Complete = set2Started && isSetComplete(match.team1.set2, match.team2.set2);
+        
+        const set3Started = hasValidScore(match.team1.set3) && hasValidScore(match.team2.set3);
+
+        // Match has started if any set has valid scores
+        const hasStarted = set1Started || set2Started || set3Started;
         const hasEnded = match.team1.isWinner || match.team2.isWinner;
+
+        console.log('[handleInitialAnnouncement] Analysis:', {
+            set1: { started: set1Started, complete: set1Complete },
+            set2: { started: set2Started, complete: set2Complete },
+            set3: { started: set3Started },
+            hasStarted,
+            hasEnded
+        });
 
         if (hasEnded) {
             // Match has ended - announce final result
@@ -267,10 +301,29 @@ export function AnnouncementProvider({ children }) {
                 showNotification(matchId, match, announcement, 'MATCH_START');
             }
         } else {
-            // Match is ongoing - show current score
-            if (!isVoice) {
-                const announcement = await generateAnnouncement(match, 'GAME_WON');
-                showNotification(matchId, match, announcement, 'GAME_WON');
+            // Match is ongoing - determine what to announce
+            let announcement;
+            let announcementType;
+
+            // Check for recently completed sets
+            if (set2Complete && !set3Started) {
+                // Set 2 just completed, announce set win
+                announcement = await generateAnnouncement(match, 'SET_WON');
+                announcementType = 'SET_WON';
+            } else if (set1Complete && !set2Started) {
+                // Set 1 just completed, announce set win  
+                announcement = await generateAnnouncement(match, 'SET_WON');
+                announcementType = 'SET_WON';
+            } else {
+                // Announce current game score
+                announcement = await generateAnnouncement(match, 'GAME_WON');
+                announcementType = 'GAME_WON';
+            }
+
+            if (isVoice) {
+                speakAnnouncement(announcement, match);
+            } else {
+                showNotification(matchId, match, announcement, announcementType);
             }
         }
         // If match is ongoing, wait for next state change

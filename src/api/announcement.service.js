@@ -277,9 +277,58 @@ function generateGameWonPrompt(match, team1Names, team2Names, previousState) {
  * Generate prompt for set won announcement
  */
 function generateSetWonPrompt(match, team1Names, team2Names, previousState) {
-    const setNumber = getCurrentSet(match) - 1; // Previous set that was just won
-    const team1Score = match.team1[`set${setNumber}`] || 0;
-    const team2Score = match.team2[`set${setNumber}`] || 0;
+    // Helper to check if a score is valid (not "-", undefined, empty)
+    const hasValidScore = (score) => {
+        return score !== undefined && 
+               score !== '' && 
+               score !== '-' && 
+               !isNaN(parseInt(score));
+    };
+
+    // Helper to check if a set is completed
+    const isSetComplete = (team1Score, team2Score) => {
+        if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+            return false;
+        }
+        
+        const score1 = parseInt(team1Score);
+        const score2 = parseInt(team2Score);
+        
+        return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+               (score1 === 7 && score2 === 6) || 
+               (score1 === 6 && score2 === 7);
+    };
+
+    // Find the most recently completed set
+    let setNumber = 0;
+    let team1Score = 0;
+    let team2Score = 0;
+
+    // Check set 2 first (most likely to be recently completed)
+    if (isSetComplete(match.team1.set2, match.team2.set2)) {
+        setNumber = 2;
+        team1Score = parseInt(match.team1.set2);
+        team2Score = parseInt(match.team2.set2);
+    }
+    // Then check set 1
+    else if (isSetComplete(match.team1.set1, match.team2.set1)) {
+        setNumber = 1;
+        team1Score = parseInt(match.team1.set1);
+        team2Score = parseInt(match.team2.set1);
+    }
+    // Finally check set 3 (rare, but possible)
+    else if (isSetComplete(match.team1.set3, match.team2.set3)) {
+        setNumber = 3;
+        team1Score = parseInt(match.team1.set3);
+        team2Score = parseInt(match.team2.set3);
+    }
+
+    if (setNumber === 0) {
+        // No complete set found, fallback to current game score
+        const currentSet = getCurrentSet(match);
+        return `State the current score in set ${currentSet}. Maximum 8 words.`;
+    }
+
     const winner = team1Score > team2Score ? team1Names : team2Names;
     const score = team1Score > team2Score ? `${team1Score}-${team2Score}` : `${team2Score}-${team1Score}`;
 
@@ -397,23 +446,18 @@ function getCurrentSet(match) {
     // - Otherwise we're in set 1
     
     if (set3HasScore) {
-        console.log('[getCurrentSet] Current set: 3 (has scores)');
         return 3;
     }
     if (set2Complete) {
-        console.log('[getCurrentSet] Current set: 3 (set 2 complete)');
         return 3;
     }
     if (set2HasScore) {
-        console.log('[getCurrentSet] Current set: 2 (has scores)');
         return 2;
     }
     if (set1Complete) {
-        console.log('[getCurrentSet] Current set: 2 (set 1 complete)');
         return 2;
     }
     
-    console.log('[getCurrentSet] Current set: 1 (default)');
     return 1;
 }
 
@@ -444,9 +488,51 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
         }
 
         case 'SET_WON': {
-            const setNumber = getCurrentSet(match) - 1;
-            const team1Score = match.team1[`set${setNumber}`] || 0;
-            const team2Score = match.team2[`set${setNumber}`] || 0;
+            // Helper to check if a score is valid (not "-", undefined, empty)
+            const hasValidScore = (score) => {
+                return score !== undefined && 
+                       score !== '' && 
+                       score !== '-' && 
+                       !isNaN(parseInt(score));
+            };
+
+            // Helper to check if a set is completed
+            const isSetComplete = (team1Score, team2Score) => {
+                if (!hasValidScore(team1Score) || !hasValidScore(team2Score)) {
+                    return false;
+                }
+                
+                const score1 = parseInt(team1Score);
+                const score2 = parseInt(team2Score);
+                
+                return ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) ||
+                       (score1 === 7 && score2 === 6) || 
+                       (score1 === 6 && score2 === 7);
+            };
+
+            // Find the most recently completed set
+            let setNumber = 0;
+            let team1Score = 0;
+            let team2Score = 0;
+
+            if (isSetComplete(match.team1.set2, match.team2.set2)) {
+                setNumber = 2;
+                team1Score = parseInt(match.team1.set2);
+                team2Score = parseInt(match.team2.set2);
+            } else if (isSetComplete(match.team1.set1, match.team2.set1)) {
+                setNumber = 1;
+                team1Score = parseInt(match.team1.set1);
+                team2Score = parseInt(match.team2.set1);
+            } else if (isSetComplete(match.team1.set3, match.team2.set3)) {
+                setNumber = 3;
+                team1Score = parseInt(match.team1.set3);
+                team2Score = parseInt(match.team2.set3);
+            }
+
+            if (setNumber === 0) {
+                return `Set completed`;
+            }
+
             const winner = team1Score > team2Score ? team1Names : team2Names;
             const score = team1Score > team2Score ? `${team1Score}-${team2Score}` : `${team2Score}-${team1Score}`;
             return `${winner} win set ${setNumber}, ${score}`;
