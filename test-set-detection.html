@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Detection Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-case {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .score {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 0 10px;
+        }
+        .result {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .error {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Set Detection Test</h1>
+    <p>Testing the getCurrentSet() logic with various score combinations:</p>
+    
+    <div id="tests"></div>
+
+    <script>
+        // Copy the getCurrentSet logic for testing
+        function getCurrentSet(match) {
+            const hasScore = (score) => {
+                return score !== undefined && 
+                       score !== '' && 
+                       score !== 0 && 
+                       score !== '0' && 
+                       score !== '-';
+            };
+            
+            const isSetComplete = (team1Score, team2Score) => {
+                if (!hasScore(team1Score) || !hasScore(team2Score)) {
+                    return false;
+                }
+                
+                const score1 = parseInt(team1Score) || 0;
+                const score2 = parseInt(team2Score) || 0;
+                
+                if ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) {
+                    return true;
+                }
+                if ((score1 === 7 && score2 === 6) || (score1 === 6 && score2 === 7)) {
+                    return true;
+                }
+                return false;
+            };
+            
+            const set1Team1 = match.team1.set1;
+            const set1Team2 = match.team2.set1;
+            const set1HasScore = hasScore(set1Team1) && hasScore(set1Team2);
+            const set1Complete = set1HasScore && isSetComplete(set1Team1, set1Team2);
+            
+            const set2Team1 = match.team1.set2;
+            const set2Team2 = match.team2.set2;
+            const set2HasScore = hasScore(set2Team1) && hasScore(set2Team2);
+            const set2Complete = set2HasScore && isSetComplete(set2Team1, set2Team2);
+            
+            const set3Team1 = match.team1.set3;
+            const set3Team2 = match.team2.set3;
+            const set3HasScore = hasScore(set3Team1) && hasScore(set3Team2);
+            
+            console.log('Debug:', {
+                set1: { team1: set1Team1, team2: set1Team2, hasScore: set1HasScore, complete: set1Complete },
+                set2: { team1: set2Team1, team2: set2Team2, hasScore: set2HasScore, complete: set2Complete },
+                set3: { team1: set3Team1, team2: set3Team2, hasScore: set3HasScore }
+            });
+            
+            if (set3HasScore) return 3;
+            if (set2Complete) return 3;
+            if (set2HasScore) return 2;
+            if (set1Complete) return 2;
+            return 1;
+        }
+
+        const testCases = [
+            {
+                name: "Match just started",
+                score: { team1: { set1: 0, set2: '-', set3: '-' }, team2: { set1: 0, set2: '-', set3: '-' } },
+                expected: 1
+            },
+            {
+                name: "First set ongoing: 3-2",
+                score: { team1: { set1: 3, set2: '-', set3: '-' }, team2: { set1: 2, set2: '-', set3: '-' } },
+                expected: 1
+            },
+            {
+                name: "First set complete, second set just started",
+                score: { team1: { set1: 6, set2: 0, set3: '-' }, team2: { set1: 3, set2: 0, set3: '-' } },
+                expected: 2
+            },
+            {
+                name: "REPORTED BUG: 6 3 1 1 - -",
+                score: { team1: { set1: 6, set2: 1, set3: '-' }, team2: { set1: 3, set2: 1, set3: '-' } },
+                expected: 2
+            },
+            {
+                name: "Second set ongoing: 6 3 4 2 - -",
+                score: { team1: { set1: 6, set2: 4, set3: '-' }, team2: { set1: 3, set2: 2, set3: '-' } },
+                expected: 2
+            },
+            {
+                name: "Second set complete, third set started",
+                score: { team1: { set1: 6, set2: 6, set3: 1 }, team2: { set1: 3, set2: 4, set3: 0 } },
+                expected: 3
+            },
+            {
+                name: "Tiebreak in first set",
+                score: { team1: { set1: 6, set2: '-', set3: '-' }, team2: { set1: 6, set2: '-', set3: '-' } },
+                expected: 1
+            },
+            {
+                name: "First set tiebreak won",
+                score: { team1: { set1: 7, set2: 0, set3: '-' }, team2: { set1: 6, set2: 0, set3: '-' } },
+                expected: 2
+            }
+        ];
+
+        function runTests() {
+            const testsDiv = document.getElementById('tests');
+            
+            testCases.forEach((testCase, index) => {
+                const result = getCurrentSet(testCase.score);
+                const isCorrect = result === testCase.expected;
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case';
+                
+                const scoreDisplay = `Set1: ${testCase.score.team1.set1}-${testCase.score.team2.set1}, Set2: ${testCase.score.team1.set2}-${testCase.score.team2.set2}, Set3: ${testCase.score.team1.set3}-${testCase.score.team2.set3}`;
+                
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.name}</h3>
+                    <div class="score">${scoreDisplay}</div>
+                    <div class="${isCorrect ? 'result' : 'error'}">
+                        Expected: Set ${testCase.expected} | Got: Set ${result} ${isCorrect ? '✅' : '❌'}
+                    </div>
+                `;
+                
+                testsDiv.appendChild(testDiv);
+            });
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

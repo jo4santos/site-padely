@@ -257,15 +257,19 @@ function getTeamNames(team) {
  */
 function generateGameWonPrompt(match, team1Names, team2Names, previousState) {
     const currentSet = getCurrentSet(match);
-    const team1Games = match.team1[`set${currentSet}`] || 0;
-    const team2Games = match.team2[`set${currentSet}`] || 0;
+    const team1Games = match.team1[`set${currentSet}`];
+    const team2Games = match.team2[`set${currentSet}`];
 
-    if (team1Games === team2Games) {
-        return `State that the score in set ${currentSet} is ${team1Games} all. Maximum 8 words.`;
-    } else if (team1Games > team2Games) {
-        return `State that ${team1Names} lead ${team1Games}-${team2Games} in set ${currentSet}. Maximum 10 words.`;
+    // Handle "-" values properly
+    const games1 = (team1Games === '-' || team1Games === undefined) ? 0 : parseInt(team1Games) || 0;
+    const games2 = (team2Games === '-' || team2Games === undefined) ? 0 : parseInt(team2Games) || 0;
+
+    if (games1 === games2) {
+        return `State that the score in set ${currentSet} is ${games1} all. Maximum 8 words.`;
+    } else if (games1 > games2) {
+        return `State that ${team1Names} lead ${games1}-${games2} in set ${currentSet}. Maximum 10 words.`;
     } else {
-        return `State that ${team2Names} lead ${team2Games}-${team1Games} in set ${currentSet}. Maximum 10 words.`;
+        return `State that ${team2Names} lead ${games2}-${games1} in set ${currentSet}. Maximum 10 words.`;
     }
 }
 
@@ -331,13 +335,22 @@ function generateMatchEndPrompt(match, team1Names, team2Names) {
  * Determines which set is currently being played based on completion status
  */
 function getCurrentSet(match) {
-    // Helper to check if a set has a meaningful score
+    // Helper to check if a set has a meaningful score (not "-", 0, undefined, or empty)
     const hasScore = (score) => {
-        return score !== undefined && score !== '' && score !== 0 && score !== '0';
+        return score !== undefined && 
+               score !== '' && 
+               score !== 0 && 
+               score !== '0' && 
+               score !== '-';
     };
     
     // Helper to check if a set is completed (one team has 6+ games and leads by 2, or it's 7-6/6-7)
     const isSetComplete = (team1Score, team2Score) => {
+        // Both scores must be meaningful numbers (not "-")
+        if (!hasScore(team1Score) || !hasScore(team2Score)) {
+            return false;
+        }
+        
         const score1 = parseInt(team1Score) || 0;
         const score2 = parseInt(team2Score) || 0;
         
@@ -356,31 +369,51 @@ function getCurrentSet(match) {
     // Check set 1
     const set1Team1 = match.team1.set1;
     const set1Team2 = match.team2.set1;
-    const set1HasScore = hasScore(set1Team1) || hasScore(set1Team2);
+    const set1HasScore = hasScore(set1Team1) && hasScore(set1Team2);
     const set1Complete = set1HasScore && isSetComplete(set1Team1, set1Team2);
     
     // Check set 2
     const set2Team1 = match.team1.set2;
     const set2Team2 = match.team2.set2;
-    const set2HasScore = hasScore(set2Team1) || hasScore(set2Team2);
+    const set2HasScore = hasScore(set2Team1) && hasScore(set2Team2);
     const set2Complete = set2HasScore && isSetComplete(set2Team1, set2Team2);
     
     // Check set 3
     const set3Team1 = match.team1.set3;
     const set3Team2 = match.team2.set3;
-    const set3HasScore = hasScore(set3Team1) || hasScore(set3Team2);
+    const set3HasScore = hasScore(set3Team1) && hasScore(set3Team2);
+    
+    console.log('[getCurrentSet] Debug info:', {
+        set1: { team1: set1Team1, team2: set1Team2, hasScore: set1HasScore, complete: set1Complete },
+        set2: { team1: set2Team1, team2: set2Team2, hasScore: set2HasScore, complete: set2Complete },
+        set3: { team1: set3Team1, team2: set3Team2, hasScore: set3HasScore }
+    });
     
     // Determine current set:
-    // - If set 3 has any score, we're in set 3
+    // - If set 3 has scores (both teams have numbers, not "-"), we're in set 3
     // - If set 2 is complete, we're in set 3
-    // - If set 2 has score but isn't complete, we're in set 2
+    // - If set 2 has scores but isn't complete, we're in set 2
     // - If set 1 is complete, we're in set 2
     // - Otherwise we're in set 1
     
-    if (set3HasScore) return 3;
-    if (set2Complete) return 3;
-    if (set2HasScore) return 2;
-    if (set1Complete) return 2;
+    if (set3HasScore) {
+        console.log('[getCurrentSet] Current set: 3 (has scores)');
+        return 3;
+    }
+    if (set2Complete) {
+        console.log('[getCurrentSet] Current set: 3 (set 2 complete)');
+        return 3;
+    }
+    if (set2HasScore) {
+        console.log('[getCurrentSet] Current set: 2 (has scores)');
+        return 2;
+    }
+    if (set1Complete) {
+        console.log('[getCurrentSet] Current set: 2 (set 1 complete)');
+        return 2;
+    }
+    
+    console.log('[getCurrentSet] Current set: 1 (default)');
     return 1;
 }
 
@@ -394,15 +427,19 @@ function getFallbackAnnouncement(type, match, team1Names, team2Names, previousSt
 
         case 'GAME_WON': {
             const currentSet = getCurrentSet(match);
-            const team1Games = match.team1[`set${currentSet}`] || 0;
-            const team2Games = match.team2[`set${currentSet}`] || 0;
+            const team1Games = match.team1[`set${currentSet}`];
+            const team2Games = match.team2[`set${currentSet}`];
 
-            if (team1Games === team2Games) {
-                return `${team1Games} all, set ${currentSet}`;
-            } else if (team1Games > team2Games) {
-                return `${team1Names} lead ${team1Games}-${team2Games}, set ${currentSet}`;
+            // Handle "-" values
+            const games1 = (team1Games === '-' || team1Games === undefined) ? 0 : parseInt(team1Games) || 0;
+            const games2 = (team2Games === '-' || team2Games === undefined) ? 0 : parseInt(team2Games) || 0;
+
+            if (games1 === games2) {
+                return `${games1} all, set ${currentSet}`;
+            } else if (games1 > games2) {
+                return `${team1Names} lead ${games1}-${games2}, set ${currentSet}`;
             } else {
-                return `${team2Names} lead ${team2Games}-${team1Games}, set ${currentSet}`;
+                return `${team2Names} lead ${games2}-${games1}, set ${currentSet}`;
             }
         }
 
