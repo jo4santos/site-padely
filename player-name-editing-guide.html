@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Name Editing Guide</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .feature-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .step {
+            background: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .keyboard-shortcut {
+            background: #2d3748;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .icon-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #0066cc;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        ul {
+            margin: 10px 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎾 Player Name Customization Guide</h1>
+    
+    <div class="feature-box">
+        <h2>📝 New Editing Features</h2>
+        <p>You can now easily edit existing player name mappings without having to delete and recreate them!</p>
+        
+        <h3>✨ What's New:</h3>
+        <ul>
+            <li><strong>In-place editing</strong> - Click the edit button to modify existing mappings</li>
+            <li><strong>Keyboard shortcuts</strong> - Use Enter to save, Esc to cancel</li>
+            <li><strong>Auto-focus</strong> - Fields are automatically focused for quick editing</li>
+            <li><strong>Better UX</strong> - Clear visual feedback and helpful hints</li>
+        </ul>
+    </div>
+
+    <h2>🚀 How to Access Player Name Settings</h2>
+    
+    <div class="step">
+        <strong>Step 1:</strong> Go to any tournament page in the Padely app
+    </div>
+    
+    <div class="step">
+        <strong>Step 2:</strong> <strong>Triple-click</strong> the Padely logo in the top-left corner
+        <br><small>💡 This is a hidden feature - click the logo 3 times quickly!</small>
+    </div>
+    
+    <div class="step">
+        <strong>Step 3:</strong> The Player Name Customization dialog will open
+    </div>
+
+    <h2>✏️ How to Edit Player Names</h2>
+
+    <div class="feature-box">
+        <h3>Adding New Mappings:</h3>
+        <ol>
+            <li>Enter the <strong>Original Name</strong> (exactly as it appears in the API)</li>
+            <li>Enter your <strong>Preferred Name</strong> (how you want it displayed)</li>
+            <li>Click <span class="icon-button">➕ Add</span> or press <span class="keyboard-shortcut">Enter</span></li>
+        </ol>
+        
+        <h3>Editing Existing Mappings:</h3>
+        <ol>
+            <li>Find the mapping you want to edit in the list</li>
+            <li>Click the <span class="icon-button">✏️ Edit</span> button</li>
+            <li>Modify the <strong>Original Name</strong> or <strong>Preferred Name</strong> as needed</li>
+            <li>Click <span class="icon-button">💾 Save</span> or press <span class="keyboard-shortcut">Enter</span> to save</li>
+            <li>Click <span class="icon-button">❌ Cancel</span> or press <span class="keyboard-shortcut">Esc</span> to cancel</li>
+        </ol>
+
+        <h3>Managing Mappings:</h3>
+        <ul>
+            <li><span class="icon-button">🗑️ Delete</span> - Remove individual mappings</li>
+            <li><span class="icon-button">Reset to Defaults</span> - Restore default mappings</li>
+            <li><span class="icon-button">Clear All</span> - Remove all custom mappings</li>
+        </ul>
+    </div>
+
+    <h2>🎯 Example Use Cases</h2>
+
+    <div class="feature-box">
+        <h3>Before (Original API Names):</h3>
+        <ul>
+            <li>"P. Josemaria Martin (1)" → "Paulita Josemaria Martin (1)"</li>
+            <li>"A. Sanchez Alayeto" → "Ale Sanchez Alayeto"</li>
+            <li>"M. Ortega García" → "Mapi Ortega García"</li>
+        </ul>
+
+        <h3>After Editing:</h3>
+        <ul>
+            <li>"P. Josemaria Martin" → "Paula" <em>(rankings preserved automatically)</em></li>
+            <li>"A. Sanchez Alayeto" → "Ale"</li>
+            <li>"M. Ortega García" → "Mapi"</li>
+        </ul>
+    </div>
+
+    <h2>💡 Pro Tips</h2>
+
+    <div class="feature-box">
+        <ul>
+            <li><strong>Rankings preserved:</strong> Don't include (1), (2) etc. in your custom names - they're added automatically</li>
+            <li><strong>Keyboard shortcuts:</strong> Use <span class="keyboard-shortcut">Enter</span> to add/save and <span class="keyboard-shortcut">Esc</span> to cancel</li>
+            <li><strong>Voice & notifications:</strong> Custom names appear in voice announcements and notifications</li>
+            <li><strong>Global effect:</strong> Name changes apply throughout the entire app</li>
+            <li><strong>Auto-focus:</strong> When editing, the first field is automatically focused for quick changes</li>
+        </ul>
+    </div>
+
+    <h2>🔧 Technical Details</h2>
+
+    <div class="feature-box">
+        <p>The editing system allows you to:</p>
+        <ul>
+            <li><strong>Change original names:</strong> Useful if the API name format changes</li>
+            <li><strong>Update preferred names:</strong> Refine how names are displayed</li>
+            <li><strong>Keyboard navigation:</strong> Edit efficiently without mouse clicks</li>
+            <li><strong>Validation:</strong> Prevents saving empty names</li>
+            <li><strong>Safe editing:</strong> Cancel anytime without losing data</li>
+        </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; padding: 20px; background: #f0f9ff; border-radius: 8px;">
+        <h3>🎾 Ready to Customize?</h3>
+        <p>Go to the Padely app and <strong>triple-click the logo</strong> to start editing player names!</p>
+    </div>
+</body>
+</html>
