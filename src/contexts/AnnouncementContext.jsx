@@ -57,51 +57,81 @@ export function AnnouncementProvider({ children }) {
         const team2Names = getTeamNames(match.team2);
         const matchName = `${team1Names} vs ${team2Names}`;
 
+        console.log(`[Notification] Attempting to show: ${matchName} - ${message}`);
+        console.log(`[Notification] Type: ${type}, Permission: ${Notification.permission}`);
+
         // Check if page is in background/hidden
         const isPageHidden = document.hidden || document.visibilityState === 'hidden';
+        console.log(`[Notification] Page hidden: ${isPageHidden}`);
 
         if (!('Notification' in window)) {
-            // Fallback to in-app notification
+            console.log('[Notification] Browser does not support notifications - using in-app');
             setCurrentNotification({ matchId, matchName, message, type });
             return;
         }
 
         if (Notification.permission !== 'granted') {
-            // Fallback to in-app notification
+            console.log('[Notification] Permission not granted - using in-app');
             setCurrentNotification({ matchId, matchName, message, type });
             return;
         }
 
-        // If page is visible/focused, use in-app notification for better UX
-        // Native notifications might not show or might be suppressed by the browser
-        if (!isPageHidden) {
-            setCurrentNotification({ matchId, matchName, message, type });
-            return;
-        }
-
-        // Page is hidden, use native OS notification
+        // Always try desktop notification first if permission is granted
+        // Only fallback to in-app if desktop notification fails
         try {
+            console.log('[Notification] Creating desktop notification...');
+            const iconPath = `${window.location.origin}${import.meta.env.BASE_URL}favicon-32x32.png`;
+            
             const notification = new Notification(matchName, {
                 body: message,
-                icon: '/favicon.ico',
-                badge: '/favicon.ico',
-                tag: matchId,
+                icon: iconPath,
+                badge: iconPath,
+                tag: `padely-${matchId}`,
                 requireInteraction: false,
                 silent: false,
+                timestamp: Date.now(),
             });
 
-            // Auto-close after 5 seconds
+            console.log('[Notification] Desktop notification created successfully');
+
+            // Auto-close after 8 seconds
             setTimeout(() => {
                 notification.close();
-            }, 5000);
+                console.log('[Notification] Auto-closed desktop notification');
+            }, 8000);
 
             // Focus window when notification is clicked
             notification.onclick = () => {
+                console.log('[Notification] Desktop notification clicked');
                 window.focus();
                 notification.close();
             };
+
+            notification.onerror = (error) => {
+                console.error('[Notification] Desktop notification error:', error);
+                // Fallback to in-app notification on error
+                setCurrentNotification({ matchId, matchName, message, type });
+            };
+
+            notification.onshow = () => {
+                console.log('[Notification] Desktop notification shown');
+            };
+
+            notification.onclose = () => {
+                console.log('[Notification] Desktop notification closed');
+            };
+
+            // If page is visible, also show in-app notification briefly for immediate feedback
+            if (!isPageHidden) {
+                setCurrentNotification({ matchId, matchName, message, type });
+                // Auto-close in-app notification after 3 seconds to avoid clutter
+                setTimeout(() => {
+                    setCurrentNotification(null);
+                }, 3000);
+            }
+
         } catch (error) {
-            console.error('Failed to create notification:', error);
+            console.error('[Notification] Failed to create desktop notification:', error);
             // Fallback to in-app notification on error
             setCurrentNotification({ matchId, matchName, message, type });
         }

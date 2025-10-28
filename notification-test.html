@@ -61,6 +61,7 @@
         <button onclick="requestPermission()">1. Request Permission</button>
         <button onclick="sendTestNotification()">2. Send Test Notification</button>
         <button onclick="sendMultiple()">3. Send 3 Notifications</button>
+        <button onclick="sendDelayedNotification()">4. Send Delayed Notification (5s)</button>
         <button onclick="clearLog()">Clear Log</button>
     </div>
 
@@ -154,17 +155,22 @@
 
             try {
                 log('🔨 Creating notification object...');
+                const iconPath = `${window.location.origin}/favicon-32x32.png`;
+                log(`🖼️ Using icon: ${iconPath}`);
+                
                 const notification = new Notification('Test Match: Player A vs Player B', {
                     body: 'This is a test notification from Padely. If you see this, notifications are working! 🎾',
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico',
+                    icon: iconPath,
+                    badge: iconPath,
                     tag: 'test-notification',
                     requireInteraction: false,
                     silent: false,
+                    timestamp: Date.now(),
                 });
 
                 log('✅ Notification created successfully!');
-                log('👀 Check your macOS notification center (top-right corner)');
+                log('👀 Check your desktop notification area');
+                log('💡 Note: Some browsers may not show notifications when the page is active/focused');
 
                 notification.onclick = () => {
                     log('👆 Notification clicked!');
@@ -186,8 +192,8 @@
 
                 setTimeout(() => {
                     notification.close();
-                    log('⏰ Auto-closed after 5 seconds');
-                }, 5000);
+                    log('⏰ Auto-closed after 8 seconds');
+                }, 8000);
 
             } catch (error) {
                 log(`❌ Failed to create notification: ${error.message}`, true);
@@ -216,6 +222,35 @@
             }
         }
 
+        function sendDelayedNotification() {
+            if (Notification.permission !== 'granted') {
+                alert('Please request permission first!');
+                return;
+            }
+
+            log('⏱️ Sending notification in 5 seconds...');
+            log('💡 Switch to another tab/app to test background notifications');
+            
+            setTimeout(() => {
+                const iconPath = `${window.location.origin}/favicon-32x32.png`;
+                const notif = new Notification('Delayed Test Notification', {
+                    body: 'This notification was sent after 5 seconds delay',
+                    icon: iconPath,
+                    badge: iconPath,
+                    tag: 'delayed-test'
+                });
+                log('✅ Delayed notification sent');
+                
+                notif.onclick = () => {
+                    log('👆 Delayed notification clicked!');
+                    window.focus();
+                    notif.close();
+                };
+                
+                setTimeout(() => notif.close(), 8000);
+            }, 5000);
+        }
+
         function clearLog() {
             document.getElementById('log').innerHTML = '';
             log('🧹 Log cleared');
@@ -226,6 +261,15 @@
         log('🚀 Notification test page loaded');
         log('📱 Platform: ' + navigator.platform);
         log('🌐 User Agent: ' + navigator.userAgent);
+        log('👁️ Page visible: ' + !document.hidden);
+        log('🔍 Visibility state: ' + document.visibilityState);
+        
+        // Listen for visibility changes
+        document.addEventListener('visibilitychange', () => {
+            const isHidden = document.hidden;
+            const state = document.visibilityState;
+            log(`👁️ Page visibility changed: ${isHidden ? 'hidden' : 'visible'} (${state})`);
+        });
     </script>
 </body>
 </html>

@@ -328,7 +328,7 @@ function generateMatchEndPrompt(match, team1Names, team2Names) {
 
 /**
  * Get current set number
- * Only counts sets that have actual scores (not 0, undefined, or empty)
+ * Determines which set is currently being played based on completion status
  */
 function getCurrentSet(match) {
     // Helper to check if a set has a meaningful score
@@ -336,13 +336,51 @@ function getCurrentSet(match) {
         return score !== undefined && score !== '' && score !== 0 && score !== '0';
     };
     
-    // Check if set 3 has any meaningful score
-    if (hasScore(match.team1.set3) || hasScore(match.team2.set3)) return 3;
+    // Helper to check if a set is completed (one team has 6+ games and leads by 2, or it's 7-6/6-7)
+    const isSetComplete = (team1Score, team2Score) => {
+        const score1 = parseInt(team1Score) || 0;
+        const score2 = parseInt(team2Score) || 0;
+        
+        // Set is complete if:
+        // 1. One team has 6+ and leads by 2+ (6-4, 6-3, 6-2, 6-1, 6-0, 7-5, etc.)
+        // 2. Score is 7-6 or 6-7 (tiebreak)
+        if ((score1 >= 6 || score2 >= 6) && Math.abs(score1 - score2) >= 2) {
+            return true;
+        }
+        if ((score1 === 7 && score2 === 6) || (score1 === 6 && score2 === 7)) {
+            return true;
+        }
+        return false;
+    };
     
-    // Check if set 2 has any meaningful score
-    if (hasScore(match.team1.set2) || hasScore(match.team2.set2)) return 2;
+    // Check set 1
+    const set1Team1 = match.team1.set1;
+    const set1Team2 = match.team2.set1;
+    const set1HasScore = hasScore(set1Team1) || hasScore(set1Team2);
+    const set1Complete = set1HasScore && isSetComplete(set1Team1, set1Team2);
     
-    // Default to set 1
+    // Check set 2
+    const set2Team1 = match.team1.set2;
+    const set2Team2 = match.team2.set2;
+    const set2HasScore = hasScore(set2Team1) || hasScore(set2Team2);
+    const set2Complete = set2HasScore && isSetComplete(set2Team1, set2Team2);
+    
+    // Check set 3
+    const set3Team1 = match.team1.set3;
+    const set3Team2 = match.team2.set3;
+    const set3HasScore = hasScore(set3Team1) || hasScore(set3Team2);
+    
+    // Determine current set:
+    // - If set 3 has any score, we're in set 3
+    // - If set 2 is complete, we're in set 3
+    // - If set 2 has score but isn't complete, we're in set 2
+    // - If set 1 is complete, we're in set 2
+    // - Otherwise we're in set 1
+    
+    if (set3HasScore) return 3;
+    if (set2Complete) return 3;
+    if (set2HasScore) return 2;
+    if (set1Complete) return 2;
     return 1;
 }
 
