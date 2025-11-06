@@ -16,11 +16,7 @@ const TournamentsPage = {
         content.innerHTML = '<div class="loading">Loading tournaments...</div>';
 
         try {
-            const allTournaments = await ApiService.getTournaments();
-
-            // Filter out specific tournament types
-            const excludedTypes = ['world-championships', 'fip-championship'];
-            this.tournaments = allTournaments.filter(t => !excludedTypes.includes(t.type));
+            this.tournaments = await ApiService.getTournaments();
             this.filteredTournaments = this.tournaments;
 
             // Separate tournaments happening today
