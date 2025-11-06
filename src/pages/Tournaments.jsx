@@ -126,11 +126,7 @@ export default function TournamentsPage() {
             try {
                 const allTournaments = await getTournaments();
 
-                // Filter out specific tournament types
-                const excludedTypes = ['world-championships', 'fip-championship'];
-                const filtered = allTournaments.filter(t => !excludedTypes.includes(t.type));
-
-                setTournaments(filtered);
+                setTournaments(allTournaments);
             } catch (err) {
                 setError('Error loading tournaments. Please try again later.');
                 console.error(err);
