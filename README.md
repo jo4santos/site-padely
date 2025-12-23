@@ -174,13 +174,13 @@ Tournaments are automatically categorized:
 
 ## API Integration
 
-The app uses the Padely API at `https://fredericosilva.net:8443/padely`.
+The app uses the Padely API at `https://padely.fredericosilva.net`.
 
 Endpoints used:
-- `GET /padely/events` - List tournaments
-- `GET /padely/event?id={id}&day={day}` - Get matches
-- `GET /padely/match_stats?eventId={id}&matchId={id}` - Get match statistics
-- `GET /padely/ranking?gender={gender}` - Get player rankings
+- `GET /events` - List tournaments
+- `GET /event?id={id}&day={day}` - Get matches
+- `GET /match_stats?eventId={id}&matchId={id}` - Get match statistics
+- `GET /ranking?gender={gender}` - Get player rankings
 
 ## Deployment
 

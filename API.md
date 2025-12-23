@@ -1,4 +1,4 @@
-base url: https://fredericosilva.net:8081/
+base url: https://padely.fredericosilva.net/
 
 // tournaments
 padely/events

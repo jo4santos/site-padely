@@ -1,10 +1,10 @@
 /**
  * API Service - Isolated layer for all API interactions
- * Base URL: https://fredericosilva.net:8081/
+ * Base URL: https://padely.fredericosilva.net/
  */
 
 const ApiService = (() => {
-    const BASE_URL = 'https://fredericosilva.net:8081';
+    const BASE_URL = 'https://padely.fredericosilva.net';
 
     // Use CORS proxy for local development to bypass CORS restrictions
     // Set to empty string when deploying to production if API adds CORS headers
@@ -37,7 +37,7 @@ const ApiService = (() => {
      * @returns {Promise<Array>} List of tournaments
      */
     async function getTournaments() {
-        return fetchData('/padely/events');
+        return fetchData('/events');
     }
 
     /**
@@ -47,7 +47,7 @@ const ApiService = (() => {
      * @returns {Promise<Array>} List of matches
      */
     async function getEventMatches(eventId, day) {
-        return fetchData(`/padely/event?id=${eventId}&day=${day}`);
+        return fetchData(`/event?id=${eventId}&day=${day}`);
     }
 
     /**
@@ -57,7 +57,7 @@ const ApiService = (() => {
      * @returns {Promise<Object>} Match statistics
      */
     async function getMatchStats(eventId, matchId) {
-        return fetchData(`/padely/match_stats?eventId=${eventId}&matchId=${matchId}`);
+        return fetchData(`/match_stats?eventId=${eventId}&matchId=${matchId}`);
     }
 
     /**
@@ -66,7 +66,7 @@ const ApiService = (() => {
      * @returns {Promise<Array>} List of ranked players
      */
     async function getRankings(gender = 'men') {
-        return fetchData(`/padely/ranking?gender=${gender}`);
+        return fetchData(`/ranking?gender=${gender}`);
     }
 
     // Public API
