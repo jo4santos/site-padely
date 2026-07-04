@@ -207,11 +207,13 @@ function AppContent() {
                         <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                             {/* Back button for tournament detail pages - hide on mobile */}
                             {isTournamentDetail && (
-                                <IconButton
+                                <Button
                                     onClick={() => navigate('/')}
+                                    startIcon={<ArrowBackIcon />}
                                     sx={{
                                         mr: 2,
                                         color: '#64748B',
+                                        fontWeight: 600,
                                         display: { xs: 'none', md: 'flex' },
                                         '&:hover': {
                                             backgroundColor: '#F5F7FA',
@@ -219,8 +221,8 @@ function AppContent() {
                                         },
                                     }}
                                 >
-                                    <ArrowBackIcon />
-                                </IconButton>
+                                    Back
+                                </Button>
                             )}
 
                             <Box
@@ -338,18 +340,20 @@ function AppContent() {
                                     width: '100%',
                                 }}
                             >
-                                <IconButton
+                                <Button
                                     onClick={() => navigate('/')}
+                                    startIcon={<ArrowBackIcon />}
                                     sx={{
                                         color: '#64748B',
+                                        fontWeight: 600,
                                         '&:hover': {
                                             backgroundColor: '#F5F7FA',
                                             color: '#0066CC',
                                         },
                                     }}
                                 >
-                                    <ArrowBackIcon />
-                                </IconButton>
+                                    Back
+                                </Button>
 
                                 <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: '40px', justifyContent: 'center', ml: 'auto', alignItems: 'flex-end' }}>
                                     <FormControlLabel
