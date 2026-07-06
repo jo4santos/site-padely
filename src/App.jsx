@@ -209,9 +209,9 @@ function AppContent() {
                             {isTournamentDetail && (
                                 <Button
                                     onClick={() => navigate('/')}
-                                    startIcon={<ArrowBackIcon />}
                                     sx={{
                                         mr: 2,
+                                        minWidth: 0,
                                         color: '#64748B',
                                         fontWeight: 600,
                                         display: { xs: 'none', md: 'flex' },
@@ -221,7 +221,7 @@ function AppContent() {
                                         },
                                     }}
                                 >
-                                    Back
+                                    <ArrowBackIcon />
                                 </Button>
                             )}
 
@@ -342,8 +342,8 @@ function AppContent() {
                             >
                                 <Button
                                     onClick={() => navigate('/')}
-                                    startIcon={<ArrowBackIcon />}
                                     sx={{
+                                        minWidth: 0,
                                         color: '#64748B',
                                         fontWeight: 600,
                                         '&:hover': {
@@ -352,7 +352,7 @@ function AppContent() {
                                         },
                                     }}
                                 >
-                                    Back
+                                    <ArrowBackIcon />
                                 </Button>
 
                                 <Box sx={{ display: 'flex', flexDirection: 'column', position: 'relative', minHeight: '40px', justifyContent: 'center', ml: 'auto', alignItems: 'flex-end' }}>
